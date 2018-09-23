@@ -5,6 +5,7 @@
 	> Created Time: 2018年09月22日 星期六 23时17分21秒
  ************************************************************************/
 #include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 #include <dirent.h>
 #include <sys/stat.h>
@@ -19,17 +20,23 @@ void show_file_info(char* filename, struct stat* info_p)
         char modestr[11];
 
         mode_to_letters(info_p->st_mode, modestr);
-
         printf("%s", modestr);
         printf(" %4d", (int) info_p->st_nlink);
         printf(" %-8s", uid_to_name(info_p->st_uid));
         printf(" %-8s", gid_to_name(info_p->st_gid));
         printf(" %8ld", (long) info_p->st_size);
         printf(" %.12s", 4 + ctime(&info_p->st_mtime));
-        printf(" %s\n", filename);
-
+        //printf(" %s\n", filename);
+        // 添加颜色
+        int mode = info_p->st_mode;
+    if (mode & S_IXUSR) {
+        if (S_ISDIR(mode)) {
+            printf(" \33[34m%s\n\33[0m", filename);
+        } else {
+        printf(" \33[32m%s\n\33[0m", filename);
+        }
+    } else printf(" %s\n", filename);
 }
-
 void mode_to_letters(int mode, char str[])
 {
         strcpy(str, "----------");
@@ -146,6 +153,23 @@ char* gid_to_name(gid_t gid)
     }
 
 }
+void dostat(char* filename)
+{
+        struct stat info;
+
+        if (stat(filename, &info) == -1)
+    {
+                perror(filename);
+            
+    }
+        else
+    {
+                show_file_info(filename, &info);
+            
+    }
+
+}
+
 void do_ls(char dirname[])
 {
         DIR* dir_ptr;
@@ -170,22 +194,6 @@ void do_ls(char dirname[])
 
 }
 
-void dostat(char* filename)
-{
-        struct stat info;
-
-        if (stat(filename, &info) == -1)
-    {
-                perror(filename);
-            
-    }
-        else
-    {
-                show_file_info(filename, &info);
-            
-    }
-
-}
 
 int main(int ac,char* av[])
 {
@@ -206,4 +214,3 @@ int main(int ac,char* av[])
     }
 
 }
-
