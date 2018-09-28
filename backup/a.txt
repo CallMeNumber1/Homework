@@ -1,0 +1,10 @@
+
+nihao hello
+nihao
+hello
+ls
+cd
+world
+pwd
+nihao
+
