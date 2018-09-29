@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
         printf("open error\n");
         return 0;
     }
-    char data[MAX_SIZE];
+    char data[MAX_SIZE + 1] = {0};
     int num_read;
 	//fseek(file, 0, SEEK_END);
 	//int size = ftell(file);
@@ -59,6 +59,7 @@ int main(int argc, char *argv[]) {
     //printf("%s", ar);
 	//send(sock_client, ar, strlen(ar), 0);
     while (num_read = fread(data, 1, MAX_SIZE, file) > 0) {
+        // 需要手动添上字符串结束符
         data[MAX_SIZE] = '\0';
         send(sock_client, data, strlen(data), 0);
         printf("%s\n", data);
