@@ -18,6 +18,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <signal.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -26,26 +27,19 @@
 #include <stdarg.h>
 
 
-#define DEFAULT_PORT 8080
+#define DEFAULT_PORT 8000
 #define MAX_SIZE 1024
 int main(int argc, char *argv[]) {
     int a = 0;
-    //int server_listen;
     int sockfd, port, pid;
     struct sockaddr_in server_listen;
     int sockfd1;
-    //if (argc != 2) {
-      //  printf("Usage: ./tcp_server port\n");
-       // exit(0);
-   // }
-    
-    //port = atoi(argv[1]);
     
     if ((sockfd1 = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("Socket");
         return -1;
     }
-
+    // 可以将socket的创建封装成一个函数,仅需传入端口号即可
     memset(&server_listen, 0, sizeof(server_listen));
     server_listen.sin_family = AF_INET;
     server_listen.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -69,14 +63,52 @@ int main(int argc, char *argv[]) {
             printf("Error forking child process");
         if (pid == 0) {
             close(sockfd1);
-            char buffer[MAX_SIZE + 1] = {0};
+            char buffer[MAX_SIZE + 1];
             // recv返回值为0,说明对方已关闭连接,因此自己也关闭,然后退出子进程,父进程什么也不做,再从accpet开始
+            
+            // 创建以客户端IP命名的目录
+            char dirname[100] = "/home/chongh/Linux/";
+            strcat(dirname, inet_ntoa(client_addr.sin_addr));
+            printf("%s\n", dirname);
+            if (NULL == opendir(dirname)) {
+                mkdir(dirname, 0777);
+            }
+
+            char f0[100] = {0};
+            strcpy(f0, dirname);
+            strcat(f0, "/cpu_log.txt");
+            FILE *fp0 = fopen(f0, "w");
+            
+            char f1[100] = {0};
+            strcpy(f1, dirname);
+            strcat(f1, "/disk_log.txt");
+            FILE *fp1 = fopen(f1, "w");
+            
+            char f2[100] = {0};
+            strcpy(f2, dirname);
+            strcat(f2, "/mem_log.txt");
+            FILE *fp2 = fopen(f2, "w");
+
+
+            if (fp0 == NULL || fp1 == NULL || fp2 == NULL) {
+                printf("error create file\n");
+                return 0;
+            }
+
             while ((a = recv(sockfd, buffer, MAX_SIZE, 0)) > 0) {
-               buffer[a] = '\0';
-                printf("%s:%d : recv %d 字节 %s\n", inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port), a, buffer);
+                buffer[a] = '\0';
+                printf("%s:%d : recv %d 字节 %s\n", inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port), a + 1, buffer);
                 // 清空输出缓冲区,并把缓冲区内容输出
                 fflush(stdout);
-                memset(buffer, 0, sizeof(buffer));
+                // 根据接收到的buffer开头的标志位决定写入哪个文件,标志位不写入
+                if (buffer[0] == '0') {
+                    fwrite(buffer + 1, 1, a, fp0);
+                } else if (buffer[0] == '1') {
+                    fwrite(buffer + 1, 1, a, fp1);
+                } else if (buffer[0] == '2') {
+                    fwrite(buffer + 1, 1, a, fp2);
+                }
+                memset(buffer, 0, sizeof(buffer));   
             }
             printf("\n");
             close(sockfd);
