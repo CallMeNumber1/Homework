@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
         exit(0);
         return -1;
     }
-        FILE *file = fopen("/home/chongh/Linux/s.c", "r");
+    FILE *file = fopen("/home/chongh/Linux/s.c", "r");
     if (file == NULL) {
         printf("open error\n");
         return 0;
@@ -58,6 +58,19 @@ int main(int argc, char *argv[]) {
 	//num_read = fread(ar, 1, size, file);
     //printf("%s", ar);
 	//send(sock_client, ar, strlen(ar), 0);
+    
+    //system("bash disk.sh");
+    char buf[MAX_SIZE + 1] = {0};
+    // 用popen调用shell脚本，并将脚本输出输入管道
+    FILE *pp = popen("bash disk.sh", "r");
+    FILE *fp = fopen("testpp.txt", "w");
+    while (fread(buf, 1, MAX_SIZE, pp) > 0) {
+        buf[MAX_SIZE] = '\0';
+        fwrite(buf, 1, strlen(buf), fp);
+    } 
+    pclose(pp);
+    fclose(fp);
+
     while (num_read = fread(data, 1, MAX_SIZE, file) > 0) {
         // 需要手动添上字符串结束符
         data[MAX_SIZE] = '\0';
