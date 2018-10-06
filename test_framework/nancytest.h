@@ -101,6 +101,7 @@ void TESTCASE_NAME(testcase_name)::Run()
     UnitTest::GetInstance()->Run();
 //原本Unitest::GetInstance()->CurrentTestCase->nTestResult = 0
 #define EXPECT(m, n) \
+    printf("%s = %d ", #m, m); \
     if (m != n) \
     { \
         UnitTest::GetInstance()->CurrentTestCase->nTestResult = 0; \
