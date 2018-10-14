@@ -31,7 +31,7 @@ int write_log(char *log_path, const char *format, ...) {
 }
 
 int main(int argc, char **argv) {
-    char *log_path = "/home/chongh/Linux/log/test.log";
+    char *log_path = "/home/chongh/Homework/log_sys/test.log";
     char *format = "connect to %s success\n";
     char *host = "192.168.1.40";
     write_log(log_path, format, host);
