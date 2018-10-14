@@ -21,3 +21,16 @@
 #### myls.c
 
 - Linux C实现ls命令
+
+#### log_sys
+
+- 存放了两个函数
+- write_Pi_log.c
+  - 将指定格式的字符串写入日志文件中
+- get_conf_value.c
+  - 从一个配置文件读取某个配置项
+
+
+
+
+
