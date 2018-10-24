@@ -11,8 +11,8 @@
 #include <math.h>
 #include <time.h>
 #define INF 0x3f3f3f3f
-
-int calc(const char *str, int l, int r, int a_value) {
+#define MOD_NUM 100000000000
+long long calc(const char *str, int l, int r, int a_value) {
     int pos = -1, temp_prior = 0, prior = INF - 1;
     for (int i = l; i <= r; i++) {
         int cur_prior = INF;
@@ -31,7 +31,7 @@ int calc(const char *str, int l, int r, int a_value) {
         }
     }
     if (pos == - 1) {               // 当找到的不是操作符时,则为操作数
-        int num = 0;
+        long long num = 0;
         for (int i = l; i <= r; i++) {
             if (str[i] == 'a') return a_value;
             if (str[i] < '0' || str[i] > '9') continue;
@@ -39,14 +39,14 @@ int calc(const char *str, int l, int r, int a_value) {
         }
         return num;
     } else {
-        int a = calc(str, l, pos - 1, a_value);
-        int b = calc(str, pos + 1, r, a_value);
+        long long a = calc(str, l, pos - 1, a_value);
+        long long b = calc(str, pos + 1, r, a_value);
         switch (str[pos]) {
-            case '+' : return a + b;
-            case '-' : return a - b;
-            case '*' : return a * b;
-            case '/' : return a / b;
-            case '^' : return (int)pow(a, b);
+            case '+' : return (a + b + MOD_NUM) % MOD_NUM ;
+            case '-' : return (a - b + MOD_NUM) % MOD_NUM ;
+            case '*' : return (a * b) % MOD_NUM;
+            case '/' : return (a / b) % MOD_NUM;
+            case '^' : return (long long)pow(a, b) % MOD_NUM;
         }
 
     }
@@ -60,22 +60,23 @@ int main() {
     char opt[30][100];
     int num, len;
     int valid[30] = {0};
-    scanf("%[^\n]s", str);
+    scanf("%[^\r\n\t]s", str),getchar(), getchar();
     scanf("%d", &num);
-    getchar();
+    getchar(), getchar();
     len = strlen(str);
     for (int i = 0; i < num; i++) {
-        scanf("%[^\n]s", opt[i]);
+        scanf("%[^\r\n\t]s", opt[i]);
         getchar();              // 为什么不加getchar会报错
+        getchar();
     }
-    //printf("%s\n", str);
-    //for (int i = 0; i < num; i++) {
-    //    printf("%s\n", opt[i]);
-    //}
+    printf("%s\n", str);
+    for (int i = 0; i < num; i++) {
+        printf("%s\n", opt[i]);
+    }
     for (int i = 0; i < num; i++) {
         for (int j = 0; j < 10; j++) {
-            int value = rand() % 100;
-            int dest = calc(str, 0, len - 1, value);
+            int value = rand() % 100 + 200;
+            long long dest = calc(str, 0, len - 1, value);
             if (calc(opt[i], 0, strlen(opt[i]) - 1, value) != dest) {
                 valid[i] = 1;
                 break;
