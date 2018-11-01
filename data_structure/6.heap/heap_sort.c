@@ -12,9 +12,11 @@
 #define swap(a, b) { \
     __typeof(a) __temp = a; a = b; b = __temp; \
 }
+
 void head_sort(int *arr, int n) {
     // 改变数组的映射 p[1]即a[0]
     int *p = arr - 1;
+    // 建堆
     for (int i = 2; i <= n; i++) {
         int ind = i;
         while (ind > 1) {
@@ -27,6 +29,8 @@ void head_sort(int *arr, int n) {
     for (int i = n; i > 1; i--) {
         swap(p[i], p[1]);
         int ind = 1;
+        // 为什么<=i-1?因为最后一位相当于是删去,在排序情境中是
+        // 已经确立了最后的位置,不必参与处理了
         while ((ind << 1) <= i - 1) {
             int temp = ind;
             if (p[temp] < p[ind << 1]) temp = ind << 1;
@@ -48,6 +52,7 @@ void output(int *num, int n) {
     printf("]\n");
     return ;
 }
+
 int main() {
     #define MAX_N 20
     int arr[MAX_N];

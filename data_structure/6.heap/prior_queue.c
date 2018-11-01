@@ -60,7 +60,7 @@ int pop(priority_queue *q) {
     // 删除堆尾元素
     int ind = 1;
     while ((ind << 1) <= q->cnt) {
-        // temp record max ind
+        // temp记录最大值的下标
         int temp = ind;
         if (q->data[temp] < q->data[ind * 2])  temp = ind * 2;
         if (((ind * 2) + 1) <= q->cnt && q->data[temp] < q->data[(ind << 1) | 1]) temp = ((ind << 1) | 1);
