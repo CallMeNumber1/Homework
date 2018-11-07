@@ -4,6 +4,7 @@
 	> Mail: 304451676@qq.com
 	> Created Time: 2018年11月04日 星期日 11时22分48秒
  ************************************************************************/
+// 中序线索化
 #include <stdio.h>
 #include <stdlib.h>
 #define NORMAL 0
@@ -34,12 +35,14 @@ void build(Node *root) {
     static Node *pre = NULL;
     build(root->lchild);
     // 建立前驱索引
+    // 左孩子为空则可以存前驱线索
     if (root->lchild == NULL) {
         root->lchild = pre;
         // 代表左子树是个线索
         root->ltag = THREAD;
     }
     // 当前节点前驱的后继
+    // 右孩子为空则可以用来存后继线索
     if (pre != NULL && pre->rchild == NULL) {
         pre->rchild = root;
         pre->rtag = THREAD;
@@ -50,6 +53,7 @@ void build(Node *root) {
 }
 
 // 状态机 四种状态
+// 线索化,可实现中序非递归遍历
 void output(Node *root) {
     int status = 1;
     Node *p = root;

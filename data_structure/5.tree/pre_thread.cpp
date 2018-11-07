@@ -28,51 +28,53 @@ Node *insert(Node *root, int key) {
     else root->rchild = insert(root->rchild, key);
     return root;
 }
-
-void build(Node *root) {
+void preorder(Node *root) {
     if (root == NULL) return ;
-    // 静态变量pre
+    printf("%d ", root->key);
+    preorder(root->lchild);
+    preorder(root->rchild);
+    return ;
+}
+void build(Node *root) {
+    // 当仅用root为空判断空时,有线索也会判定为非空,则递归不会结束
+    if (root == NULL || root->ltag == THREAD || root->rtag == THREAD)  return ;
     static Node *pre = NULL;
-    build(root->lchild);
-    // 建立前驱索引
+    // DEBUG
+    //printf("%d ", root->key);
+    // DEBUG
+    // 建立前驱
     if (root->lchild == NULL) {
         root->lchild = pre;
-        // 代表左子树是个线索
         root->ltag = THREAD;
     }
-    // 当前节点前驱的后继
+    //建立后继 
     if (pre != NULL && pre->rchild == NULL) {
         pre->rchild = root;
         pre->rtag = THREAD;
     }
     pre = root;
+    build(root->lchild);
     build(root->rchild);
     return ;
 }
 
 // 状态机 四种状态
+// 线索化 可实现前序列非递归遍历
+// 输出当前节点,如果左子树不空(非线索),则往左走
+// 否则,当左子树为空(即记录了后继时),往右走
 void output(Node *root) {
     int status = 1;
     Node *p = root;
     while (p) {
-    // 用来状态转移
-        switch (status) {
+        switch(status) {
             case 1: {
-                while (p->ltag == NORMAL && p->lchild) p = p->lchild;
-                status = 2;
-            } break;
-            case 2:  {
                 printf("%d ", p->key);
-                status = 3;
-            } break;
-            case 3: {
-                if (p->rtag == NORMAL) {
+                if (p->ltag == NORMAL) {
+                    p = p->lchild;
                     status = 1;
                 } else {
-                    status = 2;
+                    p = p->rchild;
                 }
-                // 注意 先进行状态转移,再对p进行赋值
-                p = p->rchild;
             } break;
         }
     }
@@ -107,8 +109,10 @@ int main() {
     while (scanf("%d", &n) != EOF) {
         root = insert(root, n);
     }
+    preorder(root);
+    printf("\n");
     build(root);
-    output_thread(root);
+    //output_thread(root);
     output(root);
     clear(root);
     return 0;
