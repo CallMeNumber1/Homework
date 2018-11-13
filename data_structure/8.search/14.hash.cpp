@@ -16,7 +16,7 @@ typedef struct Node {
 } Node;
 
 typedef struct HashTable {
-    // 链表头地址数组, 保存多个链表
+    // 链表头地址数组
     Node **data;  
     int size;
 } HashTable;
@@ -98,31 +98,23 @@ void clear_hashtable(HashTable *h) {
     return ;
 }
 
-void to_lower(char *temp) {
-    for (int i = 0; temp[i]; i++) {
-        if (temp[i] >= 'A' && temp[i] <= 'Z') {
-            temp[i] = temp[i] + 'a' - 'A';
-        }
-    }
-    return ;
-}
-
 // 拉链法和BKDRHash实现哈希表
 int main() {
-    int n;
+    int op;
     char str[100];
     HashTable *h = init_hashtable(100);
-    scanf("%d", &n);
-    for (int i = 0; i < n; i++) {
-        scanf("%s", str);
-        to_lower(str);
-        if (search(h, str)) {
-            printf("Yes\n");
-        } else {
-            printf("No\n");
-            insert(h, str);
+    while (scanf("%d%s", &op, str) != EOF) {
+        switch (op) {
+            case 0: {
+                printf("insert %s to HashTable\n", str);
+                insert(h, str);
+            } break;
+            case 1: {
+                printf("search %s result = %d\n", str, search(h, str));   
+            } break;
         }
     }
+    
+
     return 0;
 }
-

@@ -34,6 +34,7 @@ int binary_search2(int *num, int n) {
         // 加1后再除2, 这样在最后剩两个数时取得较后面的数,避免死循环
         mid = (head + tail + 1) >> 1;
         //printf("head:%d, tail:%d, mid:%d\n", head, tail, mid);
+        // head变为mid而非mid + 1,以防错过答案
         if (num[mid] == 1) head = mid;
         else tail = mid - 1;
     }
