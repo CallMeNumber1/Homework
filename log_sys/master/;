@@ -5,21 +5,38 @@
 	> Created Time: 2018年11月13日 星期二 20时02分50秒
  ************************************************************************/
 
+#include <pthread.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
+#include <sys/wait.h>
+#include <sys/file.h>
+#include <signal.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
+#include <time.h>
+#include <stdarg.h>
+
 // 最多设置的线程数
 #define INS 5
 
 typedef struct mypara {
     char *s;
+    //　传入参数标志是哪个线程
     int num;
 } mypara;
 
 typedef struct Node {
-    int data;
+    struct sockaddr_in addr;
     struct Node *next;
 } Node, *LinkedList;
 
@@ -58,6 +75,7 @@ int find_min(int n, int *arr) {
     return ind;
 }
 void *func(void *arg);
+int socket_create(int port);
 int main() {
     // 初始化链表数组
     for (int i = 0; i <= INS; i++) {
@@ -111,4 +129,16 @@ void *func(void *arg) {
     }
     output(linkedlist[para->num]);
     return NULL;
+}
+int socket_create(int port) {
+    int socket_server, sockfd;
+    struct sockaddr_in s_addr, c_addr;
+    socklen_t len;
+    if ((socket_server = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("socket create");
+        return -1;
+    }
+    s_addr.sin_family = AF_INET;
+    s_addr.sin_port = htons(PORT);
+    s_addr.sin_addr.s_addr = htons(INADDR_ANY);
 }

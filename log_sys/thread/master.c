@@ -15,11 +15,12 @@
 
 typedef struct mypara {
     char *s;
+    //　传入参数标志是哪个线程
     int num;
 } mypara;
 
 typedef struct Node {
-    int data;
+    struct sockaddr_in addr;
     struct Node *next;
 } Node, *LinkedList;
 
