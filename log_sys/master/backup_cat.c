@@ -82,6 +82,7 @@ int main() {
     for (int i = 0; i <= INS; i++) {
         linkedlist[i] = NULL;
     }
+    //freopen("in.in", "r", stdin);
     pthread_t t[INS + 1];
     mypara para[INS + 1];
     /*
@@ -99,6 +100,7 @@ int main() {
     pthread_join(t[3], NULL);
     pthread_join(t[4], NULL);
     */
+   // char str[20];
 
     // 从配置文件中读取初始化信息
     char value[20];
@@ -122,36 +124,29 @@ int main() {
         linkedlist[ind] = ret.next;
         queue[ind]++;
 
-       // printf("%s\n", temp);
-    }
-    for (int i = 0; i < INS; i++) {
-        printf("%d ", queue[i]);
-        printf(" ....... ");
-        output(linkedlist[i]);
+        printf("%s\n", temp);
     }
 
-    int server_socket = socket_create(8001);
-    int confd;
-    while (1) {
-        struct sockaddr_in client_addr;
-        socklen_t len = sizeof(client_addr);
-        if ((confd = accept(server_socket, (struct sockaddr*)&client_addr, &len)) == -1) {
-            perror("accept");
-            return -1;
-        }
-        //printf("%s connection\n", inet_ntoa(client_addr.sin_addr));
-        // 将client_addr插入链表
+    /*while (scanf("%s", str) != EOF) {
+        printf("%s\n", str);
+        // 平衡请求
+        // 选择元素做少的链表插入，均衡线程间的负载
         struct sockaddr_in t_addr;
         t_addr.sin_family = AF_INET;
         t_addr.sin_port = htons(PORT);
-        char *temp = inet_ntoa(client_addr.sin_addr);
-        t_addr.sin_addr.s_addr = inet_addr(temp);
-        // 选择元素较少的链表插入,均衡线程间的负载
+        t_addr.sin_addr.s_addr = inet_addr(str);
         int ind = find_min(INS, queue);
         Node ret;
         ret = insert(linkedlist[ind], t_addr);
         linkedlist[ind] = ret.next;
         queue[ind]++;
+
+    } */
+
+    for (int i = 0; i < INS; i++) {
+        printf("%d ", queue[i]);
+        printf(" ....... ");
+        output(linkedlist[i]);
     }
 
     return 0;
@@ -213,4 +208,3 @@ int socket_create(int port) {
     }
     return socket_server;
 }
-
