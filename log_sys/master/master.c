@@ -37,17 +37,24 @@ typedef struct mypara {
 
 typedef struct Node {
     struct sockaddr_in addr;
+    int sockfd;
     struct Node *next;
 } Node, *LinkedList;
 
 int queue[INS + 1] = {0};
 LinkedList linkedlist[INS + 1];
 
-Node insert(Node *head, struct sockaddr_in t_addr) {
+Node insert(Node *head, char *ip_str, int sockfd) {
+    // 封装sockaddr_in结构体
+    struct sockaddr_in t_addr;
+    t_addr.sin_family = AF_INET;
+    t_addr.sin_port = htons(PORT);
+    t_addr.sin_addr.s_addr = inet_addr(ip_str);
+    
     Node ret;
     ret.next = head;
     Node *p = (Node *)malloc(sizeof(Node));
-    p->addr = t_addr;
+    p->addr = t_addr;p->sockfd = sockfd;
     p->next = ret.next;
     ret.next = p;
     return ret;
@@ -77,6 +84,24 @@ int find_min(int n, int *arr) {
 void *func(void *arg);
 int socket_create(int port);
 char *get_conf_value(char *path_name, char *key_name, char *value);
+// 检查是否已存在这个IP
+int isrepeat(char *str) {
+    int flag = 0;
+    for (int i = 0; i < INS && !flag; i++) {
+        Node *p = linkedlist[i];
+        while (p && !flag) {
+            // 疑问 为何到循环里后加这条语句
+            // strr的地址会变化
+            //char *dest_addr = inet_ntoa(p->addr.sin_addr);
+            printf("isrepeat addr = %s\n", str);
+            // 找到时,置flag为1,退出两层循环
+            if (strcmp(str, inet_ntoa(p->addr.sin_addr)) == 0) flag = 1;
+            printf("after addr = %s\n", str);
+            p = p->next;
+        }
+    }
+    return flag;
+}
 int main() {
     // 初始化链表数组
     for (int i = 0; i <= INS; i++) {
@@ -84,7 +109,7 @@ int main() {
     }
     pthread_t t[INS + 1];
     mypara para[INS + 1];
-    /*
+    
     for (int i = 0; i < INS; i++) {
         // 设置num的值后将para传入任务，可用来标识线程
         para[i].num = i; 
@@ -92,45 +117,36 @@ int main() {
         pthread_create(&t[i], NULL, func, (void *)&para[i]);
         printf("Current pthread id = %ld \n", t[i]);
     }
-    //　先让子进程执行完毕
-    pthread_join(t[0], NULL); //等待当前执行的线程完毕
-    pthread_join(t[1], NULL);
-    pthread_join(t[2], NULL);
-    pthread_join(t[3], NULL);
-    pthread_join(t[4], NULL);
-    */
+    
 
     // 从配置文件中读取初始化信息
     char value[20];
     char *prename = get_conf_value("./init.conf", "prename", value);
     char *start = get_conf_value("./init.conf", "start", value);
     char *finish = get_conf_value("./init.conf", "finish", value);
+    /*
     for (int i = atoi(start); i <= atoi(finish); i++) {
         char temp[20];
         strcpy(temp, prename);
         // 不减1,则拼接时会有换行
         sprintf(temp + strlen(temp) - 1, ".%d", i);
-        // 封装sockaddr_in结构体
-        struct sockaddr_in t_addr;
-        t_addr.sin_family = AF_INET;
-        t_addr.sin_port = htons(PORT);
-        t_addr.sin_addr.s_addr = inet_addr(temp);
         // 选择元素较少的链表插入,均衡线程间的负载
         int ind = find_min(INS, queue);
         Node ret;
-        ret = insert(linkedlist[ind], t_addr);
+        ret = insert(linkedlist[ind], temp, 0);
         linkedlist[ind] = ret.next;
         queue[ind]++;
 
        // printf("%s\n", temp);
     }
+    */
     for (int i = 0; i < INS; i++) {
         printf("%d ", queue[i]);
         printf(" ....... ");
         output(linkedlist[i]);
     }
 
-    int server_socket = socket_create(8001);
+    int server_socket = socket_create(8002);
     int confd;
     while (1) {
         struct sockaddr_in client_addr;
@@ -140,20 +156,31 @@ int main() {
             return -1;
         }
         //printf("%s connection\n", inet_ntoa(client_addr.sin_addr));
-        // 将client_addr插入链表
-        struct sockaddr_in t_addr;
-        t_addr.sin_family = AF_INET;
-        t_addr.sin_port = htons(PORT);
         char *temp = inet_ntoa(client_addr.sin_addr);
-        t_addr.sin_addr.s_addr = inet_addr(temp);
+        if (isrepeat(temp)) {
+            printf("Exist client!\n");
+            continue;
+        }
+        // 将client_addr插入链表
         // 选择元素较少的链表插入,均衡线程间的负载
         int ind = find_min(INS, queue);
         Node ret;
-        ret = insert(linkedlist[ind], t_addr);
+        ret = insert(linkedlist[ind], temp, confd);
         linkedlist[ind] = ret.next;
         queue[ind]++;
+        for (int i = 0; i < INS; i++) {
+            printf("%d ", queue[i]);
+            printf(" ....... ");
+            output(linkedlist[i]);
+        }   
     }
-
+    //　先让子进程执行完毕
+    pthread_join(t[0], NULL); //等待当前执行的线程完毕
+    pthread_join(t[1], NULL);
+    pthread_join(t[2], NULL);
+    pthread_join(t[3], NULL);
+    pthread_join(t[4], NULL);
+   
     return 0;
 }
 /*
@@ -171,6 +198,29 @@ void *func(void *arg) {
     return NULL;
 }
 */
+void *func(void *arg) {
+    mypara *para = (mypara *)arg;
+    while (1) {
+        Node *p = linkedlist[para->num];
+        while (p) {
+            // 先判断client是否还活着
+            int client_sockfd = p->sockfd, byte;
+            char buffer[100];
+            while (1) {
+                if ((byte = recv(client_sockfd, buffer, 100, 0)) == -1) {
+                    perror("recv");
+                    exit(0);
+                }
+                if (strcmp(buffer, "exit") == 0) {
+                    break;
+                }
+                printf("receive from client is %s\n", buffer);
+            }
+            close(client_sockfd);
+            p = p->next;
+        }
+    }
+}
 char *get_conf_value(char *path_name, char *key_name, char *value) {
     FILE *fp = fopen(path_name, "r");
     if (fp == NULL) {
