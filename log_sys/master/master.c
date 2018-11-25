@@ -46,12 +46,13 @@ int queue[INS + 1] = {0};
 LinkedList linkedlist[INS + 1];
 
 Node insert(Node *head, char *ip_str, int sockfd) {
+    printf("\033[32m-----Insert begining-----\033[0m\n");
+    printf("insert %s success\n", ip_str);
     // 封装sockaddr_in结构体
     struct sockaddr_in t_addr;
     t_addr.sin_family = AF_INET;
     t_addr.sin_port = htons(8000);
     t_addr.sin_addr.s_addr = inet_addr(ip_str);
-    
     Node ret;
     ret.next = head;
     Node *p = (Node *)malloc(sizeof(Node));
@@ -69,8 +70,24 @@ void output(Node *head) {
         p = p->next;
     }
     printf("]\n");
-}
 
+}
+void output2(Node *head, int num) {
+    Node *p = head;
+    char logfile[20];
+    sprintf(logfile, "%d.log", num);
+    FILE *log = fopen(logfile, "a+");
+    printf("\033[33m-----queue[%d]:%d个元素-----\033[0m", num, queue[num]);
+    printf("[ ");
+    fprintf(log, "[ ");
+    while (p) {
+        printf("%s:%d ", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
+        fprintf(log, "%s:%d ", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
+        p = p->next;
+    }
+    printf("]\n");
+    fprintf(log, "]\n");
+}
 // 传出的是最小的下标，而非最小值!!!!!!
 int find_min(int n, int *arr) {
     int min = 100, ind = 0;
@@ -97,26 +114,6 @@ int isrepeat(struct sockaddr_in new) {
     }
     return flag;
 }
-/*
-int isrepeat2(const char *str) {
-    int flag = 0;
-    for (int i = 0; i < INS && !flag; i++) {
-        Node *p = linkedlist[i];
-        while (p && !flag) {
-            // 疑问 为何到循环里后加这条语句
-            // str的地址会变化
-            //char *dest_addr = inet_ntoa(p->addr.sin_addr);
-            printf("isrepeat addr = %s %p\n", str, str);
-            // 找到时,置flag为1,退出两层循环
-           // char *temp = "192.168.1.40";
-            char *temp = inet_ntoa(p->addr.sin_addr);
-            if (strcmp(str, temp) == 0) flag = 1;
-            printf("after addr = %s %p\n", str, str);
-            p = p->next;
-        }
-    }
-    return flag;
-} */
 Node delete_node(Node *head, int len, struct sockaddr_in old);
 int main() {
     pthread_mutex_init(&mut, NULL);
@@ -149,7 +146,7 @@ int main() {
     for (int i = 0; i < INS; i++) {
         // 设置num的值后将para传入任务，可用来标识线程
         para[i].num = i; 
-        para[i].s = "Hello HaiZei!";
+        //para[i].s = "Hello HaiZei!";
         pthread_create(&t[i], NULL, func, (void *)&para[i]);
         printf("Current pthread id = %ld \n", t[i]);
     }
@@ -205,20 +202,19 @@ int main() {
    
     return 0;
 }
-Node delete_node(Node *head, int len, struct sockaddr_in old) {
-    
+Node delete_node(Node *head, int para_num, struct sockaddr_in old) {
+    printf("\033[31m-----Delete begining-----\033[0m\n");
     Node ret, *p;
     ret.next = head;
     p = &ret;
-    if (len == 1) {
-        printf("delete %s success\n", inet_ntoa(old.sin_addr));
+    printf("delete %s success\n", inet_ntoa(old.sin_addr));
+    if (queue[para_num] == 1) {
         ret.next = NULL;
     } else {
         while (p->next->addr.sin_addr.s_addr != old.sin_addr.s_addr && p) {
             p = p->next;
         }
         p->next = p->next->next;
-        printf("delete %s success\n", inet_ntoa(old.sin_addr));
     }
     return ret;
 }
@@ -239,10 +235,12 @@ void *func(void *arg) {
                 perror("connect");
                 //printf("sockfd = %d\n", sockfd);
                 pthread_mutex_lock(&mut);
-                Node ret = delete_node(linkedlist[para->num], queue[para->num], p->addr);
+                Node ret = delete_node(linkedlist[para->num], para->num, p->addr);
                 linkedlist[para->num] = ret.next;
                 queue[para->num]--;
+                printf("queue[%d]剩余 %d 个元素\n", para->num, queue[para->num]);
                 pthread_mutex_unlock(&mut);
+                output2(linkedlist[para->num], para->num);
             } else {
                 //printf("p->addr: %s:%d\n", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
                 sleep(20);
@@ -299,6 +297,7 @@ int socket_create(int port) {
     
     int opt = 1;
     setsockopt(socket_server, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(opt));
+
 
     if ((bind(socket_server, (struct sockaddr*)&s_addr, sizeof(struct sockaddr))) < 0) {
         perror("bind");
