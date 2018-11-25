@@ -29,7 +29,6 @@
 // 最多设置的线程数
 #define INS 5
 #define PORT 8080
-pthread_mutex_t mut;
 typedef struct mypara {
     char *s;
     //　传入参数标志是哪个线程
@@ -49,7 +48,7 @@ Node insert(Node *head, char *ip_str, int sockfd) {
     // 封装sockaddr_in结构体
     struct sockaddr_in t_addr;
     t_addr.sin_family = AF_INET;
-    t_addr.sin_port = htons(8000);
+    t_addr.sin_port = htons(PORT);
     t_addr.sin_addr.s_addr = inet_addr(ip_str);
     
     Node ret;
@@ -117,22 +116,28 @@ int isrepeat2(const char *str) {
     }
     return flag;
 } */
-Node delete_node(Node *head, int len, struct sockaddr_in old);
 int main() {
-    pthread_mutex_init(&mut, NULL);
     // 初始化链表数组
     for (int i = 0; i <= INS; i++) {
         linkedlist[i] = NULL;
     }
     pthread_t t[INS + 1];
     mypara para[INS + 1];
-     
+    
+    for (int i = 0; i < INS; i++) {
+        // 设置num的值后将para传入任务，可用来标识线程
+        para[i].num = i; 
+        para[i].s = "Hello HaiZei!";
+        pthread_create(&t[i], NULL, func, (void *)&para[i]);
+        printf("Current pthread id = %ld \n", t[i]);
+    }
+    
     // 从配置文件中读取初始化信息
     char value[20];
     char *prename = get_conf_value("./init.conf", "prename", value);
     char *start = get_conf_value("./init.conf", "start", value);
     char *finish = get_conf_value("./init.conf", "finish", value);
-    
+    /*
     for (int i = atoi(start); i <= atoi(finish); i++) {
         char temp[20];
         strcpy(temp, prename);
@@ -147,22 +152,14 @@ int main() {
 
        // printf("%s\n", temp);
     }
-    
-    for (int i = 0; i < INS; i++) {
-        // 设置num的值后将para传入任务，可用来标识线程
-        para[i].num = i; 
-        para[i].s = "Hello HaiZei!";
-        pthread_create(&t[i], NULL, func, (void *)&para[i]);
-        printf("Current pthread id = %ld \n", t[i]);
-    }
-   
+    */
     for (int i = 0; i < INS; i++) {
         printf("%d ", queue[i]);
         printf(" ....... ");
         output(linkedlist[i]);
     }
 
-    int server_socket = socket_create(8080);
+    int server_socket = socket_create(8002);
     int confd;
     while (1) {
         struct sockaddr_in client_addr;
@@ -188,13 +185,7 @@ int main() {
             printf("%d ", queue[i]);
             printf(" ....... ");
             output(linkedlist[i]);
-        }
-        sleep(3);
-        for (int i = 0; i < INS; i++) {
-            printf("%d ", queue[i]);
-            printf(" ....... ");
-            output(linkedlist[i]);
-        }
+        }   
     }
     //　先让子进程执行完毕
     pthread_join(t[0], NULL); //等待当前执行的线程完毕
@@ -205,22 +196,6 @@ int main() {
    
     return 0;
 }
-Node delete_node(Node *head, int len, struct sockaddr_in old) {
-    Node ret, *p;
-    ret.next = head;
-    p = &ret;
-    if (len == 1) {
-        printf("delete %s success\n", inet_ntoa(old.sin_addr));
-        ret.next = NULL;
-    } else {
-        while (p->next->addr.sin_addr.s_addr != old.sin_addr.s_addr && p) {
-            p = p->next;
-        }
-        p->next = p->next->next;
-        printf("delete %s success\n", inet_ntoa(old.sin_addr));
-    }
-    return ret;
-}
 void *func(void *arg) {
     mypara *para = (mypara *)arg;
     while (1) {
@@ -229,24 +204,6 @@ void *func(void *arg) {
             // 先判断client是否还活着
             int client_sockfd = p->sockfd, byte;
             char buffer[100];
-            int sockfd;
-            if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-                perror("Socket");
-                exit(0);
-            }
-                printf("p->addr: %s:%d\n", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
-            // 连接client
-            if (connect(sockfd, (struct sockaddr *)&p->addr, sizeof(p->addr)) < 0) {
-                perror("connect");
-                printf("sockfd = %d\n", sockfd);
-                Node ret = delete_node(linkedlist[para->num], queue[para->num], p->addr);
-                linkedlist[para->num] = ret.next;
-                queue[para->num]--;
-            } else {
-                sleep(20);
-            }
-
-/*
             while (1) {
                 if ((byte = recv(client_sockfd, buffer, 100, 0)) == -1) {
                     perror("recv");
@@ -258,7 +215,6 @@ void *func(void *arg) {
                 printf("receive from client is %s\n", buffer);
             }
             close(client_sockfd);
-*/
             p = p->next;
         }
     }
