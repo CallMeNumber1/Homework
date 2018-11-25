@@ -28,7 +28,7 @@
 
 // 最多设置的线程数
 #define INS 5
-#define PORT 8000
+#define PORT 8080
 typedef struct mypara {
     char *s;
     //　传入参数标志是哪个线程
@@ -85,23 +85,37 @@ void *func(void *arg);
 int socket_create(int port);
 char *get_conf_value(char *path_name, char *key_name, char *value);
 // 检查是否已存在这个IP
-int isrepeat(char *str) {
+int isrepeat(struct sockaddr_in new) {
     int flag = 0;
     for (int i = 0; i < INS && !flag; i++) {
         Node *p = linkedlist[i];
         while (p && !flag) {
-            // 疑问 为何到循环里后加这条语句
-            // strr的地址会变化
-            //char *dest_addr = inet_ntoa(p->addr.sin_addr);
-            printf("isrepeat addr = %s\n", str);
-            // 找到时,置flag为1,退出两层循环
-            if (strcmp(str, inet_ntoa(p->addr.sin_addr)) == 0) flag = 1;
-            printf("after addr = %s\n", str);
+            if (new.sin_addr.s_addr == p->addr.sin_addr.s_addr) flag = 1;
             p = p->next;
         }
     }
     return flag;
 }
+/*
+int isrepeat2(const char *str) {
+    int flag = 0;
+    for (int i = 0; i < INS && !flag; i++) {
+        Node *p = linkedlist[i];
+        while (p && !flag) {
+            // 疑问 为何到循环里后加这条语句
+            // str的地址会变化
+            //char *dest_addr = inet_ntoa(p->addr.sin_addr);
+            printf("isrepeat addr = %s %p\n", str, str);
+            // 找到时,置flag为1,退出两层循环
+           // char *temp = "192.168.1.40";
+            char *temp = inet_ntoa(p->addr.sin_addr);
+            if (strcmp(str, temp) == 0) flag = 1;
+            printf("after addr = %s %p\n", str, str);
+            p = p->next;
+        }
+    }
+    return flag;
+} */
 int main() {
     // 初始化链表数组
     for (int i = 0; i <= INS; i++) {
@@ -157,7 +171,7 @@ int main() {
         }
         //printf("%s connection\n", inet_ntoa(client_addr.sin_addr));
         char *temp = inet_ntoa(client_addr.sin_addr);
-        if (isrepeat(temp)) {
+        if (isrepeat(client_addr)) {
             printf("Exist client!\n");
             continue;
         }
@@ -183,21 +197,6 @@ int main() {
    
     return 0;
 }
-/*
-void *func(void *arg) {
-    mypara *para;
-    para = (mypara *)arg;
-    Node ret;
-    // 模拟连接分布不均，来显示后来线程处理时平衡的功能
-    for (int i = para->num; i <= 10; i++) {
-        ret = insert(linkedlist[para->num], i);
-        queue[para->num]++;
-        linkedlist[para->num] = ret.next;   
-    }
-    output(linkedlist[para->num]);
-    return NULL;
-}
-*/
 void *func(void *arg) {
     mypara *para = (mypara *)arg;
     while (1) {
