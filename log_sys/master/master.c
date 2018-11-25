@@ -144,8 +144,6 @@ int main() {
         ret = insert(linkedlist[ind], temp, 0);
         linkedlist[ind] = ret.next;
         queue[ind]++;
-
-       // printf("%s\n", temp);
     }
     
     for (int i = 0; i < INS; i++) {
@@ -181,9 +179,11 @@ int main() {
         // 选择元素较少的链表插入,均衡线程间的负载
         int ind = find_min(INS, queue);
         Node ret;
+        pthread_mutex_lock(&mut);
         ret = insert(linkedlist[ind], temp, confd);
         linkedlist[ind] = ret.next;
         queue[ind]++;
+        pthread_mutex_unlock(&mut);
         for (int i = 0; i < INS; i++) {
             printf("%d ", queue[i]);
             printf(" ....... ");
@@ -206,6 +206,7 @@ int main() {
     return 0;
 }
 Node delete_node(Node *head, int len, struct sockaddr_in old) {
+    
     Node ret, *p;
     ret.next = head;
     p = &ret;
@@ -228,21 +229,22 @@ void *func(void *arg) {
         while (p) {
             // 先判断client是否还活着
             int client_sockfd = p->sockfd, byte;
-            char buffer[100];
             int sockfd;
             if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
                 perror("Socket");
                 exit(0);
             }
-                printf("p->addr: %s:%d\n", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
             // 连接client
             if (connect(sockfd, (struct sockaddr *)&p->addr, sizeof(p->addr)) < 0) {
                 perror("connect");
-                printf("sockfd = %d\n", sockfd);
+                //printf("sockfd = %d\n", sockfd);
+                pthread_mutex_lock(&mut);
                 Node ret = delete_node(linkedlist[para->num], queue[para->num], p->addr);
                 linkedlist[para->num] = ret.next;
                 queue[para->num]--;
+                pthread_mutex_unlock(&mut);
             } else {
+                //printf("p->addr: %s:%d\n", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
                 sleep(20);
             }
 
@@ -295,6 +297,9 @@ int socket_create(int port) {
     s_addr.sin_port = htons(PORT);
     s_addr.sin_addr.s_addr = htons(INADDR_ANY);
     
+    int opt = 1;
+    setsockopt(socket_server, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(opt));
+
     if ((bind(socket_server, (struct sockaddr*)&s_addr, sizeof(struct sockaddr))) < 0) {
         perror("bind");
         return -1;
