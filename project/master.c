@@ -26,6 +26,7 @@
 #include <time.h>
 #include <stdarg.h>
 
+#include "get_conf_value.h"
 // 最多设置的线程数
 #define INS 5
 #define PORT 8080
@@ -243,7 +244,7 @@ void *func(void *arg) {
                 output2(linkedlist[para->num], para->num);
             } else {
                 //printf("p->addr: %s:%d\n", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
-                sleep(2);
+                sleep(20);
             }
 
 /*
@@ -263,26 +264,7 @@ void *func(void *arg) {
         }
     }
 }
-char *get_conf_value(char *path_name, char *key_name, char *value) {
-    FILE *fp = fopen(path_name, "r");
-    if (fp == NULL) {
-        perror("error open file");
-        exit(0);
-    }
-    int read_cnt;
-    char *line = NULL;
-    size_t len = 0;
-    while ((read_cnt = getline(&line, &len, fp)) != -1) {
-        int lenb = strlen(key_name);
-        value = strstr(line, key_name);  //如果找不到子串则返回NULL
-        if (value == NULL) continue;     //找到则返回第一次出现的位置 
-        value = value + lenb + 1;        //额外加1用来跳过'='号
-        //printf("%s is %s", key_name, value);
-        //　找到后就break这样可以得到正确的value
-        break;
-    }
-    return value;
-}
+
 int socket_create(int port) {
     int socket_server, sockfd;
     struct sockaddr_in s_addr, c_addr;
