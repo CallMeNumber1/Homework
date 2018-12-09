@@ -5,64 +5,13 @@
 	> Created Time: 2018年11月13日 星期二 20时02分50秒
  ************************************************************************/
 
-#include <pthread.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <ctype.h>
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/wait.h>
-#include <sys/file.h>
-#include <signal.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <time.h>
-#include <stdarg.h>
-
+#include "common.h"
 #include "get_conf_value.h"
-// 最多设置的线程数
-#define INS 5
-#define PORT 8080
-pthread_mutex_t mut;
-typedef struct mypara {
-    char *s;
-    //　传入参数标志是哪个线程
-    int num;
-} mypara;
-
-typedef struct Node {
-    struct sockaddr_in addr;
-    int sockfd;
-    struct Node *next;
-} Node, *LinkedList;
-
-int queue[INS + 1] = {0};
-LinkedList linkedlist[INS + 1];
-
-Node insert(Node *head, char *ip_str, int sockfd) {
-    printf("\033[32m-----Insert begining-----\033[0m\n");
-    printf("insert %s success\n", ip_str);
-    // 封装sockaddr_in结构体
-    struct sockaddr_in t_addr;
-    t_addr.sin_family = AF_INET;
-    t_addr.sin_port = htons(8000);
-    t_addr.sin_addr.s_addr = inet_addr(ip_str);
-    Node ret;
-    ret.next = head;
-    Node *p = (Node *)malloc(sizeof(Node));
-    p->addr = t_addr;p->sockfd = sockfd;
-    p->next = ret.next;
-    ret.next = p;
-    return ret;
-}
-
+#include "socket_create.h"
+#include "delete_node.h"
+#include "insert.h"
+#include "find_min.h"
+#include "isrepeat.h"
 void output(Node *head) {
     Node *p = head;
     printf("[ ");
@@ -89,33 +38,8 @@ void output2(Node *head, int num) {
     printf("]\n");
     fprintf(log, "]\n");
 }
-// 传出的是最小的下标，而非最小值!!!!!!
-int find_min(int n, int *arr) {
-    int min = 100, ind = 0;
-    for (int i = 0; i < n; i++) {
-        if (arr[i] < min) {
-            min = arr[i];
-            ind = i;
-        } 
-    }
-    return ind;
-}
 void *func(void *arg);
-int socket_create(int port);
-char *get_conf_value(char *path_name, char *key_name, char *value);
-// 检查是否已存在这个IP
-int isrepeat(struct sockaddr_in new) {
-    int flag = 0;
-    for (int i = 0; i < INS && !flag; i++) {
-        Node *p = linkedlist[i];
-        while (p && !flag) {
-            if (new.sin_addr.s_addr == p->addr.sin_addr.s_addr) flag = 1;
-            p = p->next;
-        }
-    }
-    return flag;
-}
-Node delete_node(Node *head, int len, struct sockaddr_in old);
+
 int main() {
     pthread_mutex_init(&mut, NULL);
     // 初始化链表数组
@@ -203,29 +127,12 @@ int main() {
    
     return 0;
 }
-Node delete_node(Node *head, int para_num, struct sockaddr_in old) {
-    printf("\033[31m-----Delete begining-----\033[0m\n");
-    Node ret, *p;
-    ret.next = head;
-    p = &ret;
-    printf("delete %s success\n", inet_ntoa(old.sin_addr));
-    if (queue[para_num] == 1) {
-        ret.next = NULL;
-    } else {
-        while (p->next->addr.sin_addr.s_addr != old.sin_addr.s_addr && p) {
-            p = p->next;
-        }
-        p->next = p->next->next;
-    }
-    return ret;
-}
 void *func(void *arg) {
     mypara *para = (mypara *)arg;
     while (1) {
         Node *p = linkedlist[para->num];
         while (p) {
             // 先判断client是否还活着
-            int client_sockfd = p->sockfd, byte;
             int sockfd;
             if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
                 perror("Socket");
@@ -244,51 +151,9 @@ void *func(void *arg) {
                 output2(linkedlist[para->num], para->num);
             } else {
                 //printf("p->addr: %s:%d\n", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
-                sleep(20);
+                sleep(2);
             }
-
-/*
-            while (1) {
-                if ((byte = recv(client_sockfd, buffer, 100, 0)) == -1) {
-                    perror("recv");
-                    exit(0);
-                }
-                if (strcmp(buffer, "exit") == 0) {
-                    break;
-                }
-                printf("receive from client is %s\n", buffer);
-            }
-            close(client_sockfd);
-*/
             p = p->next;
         }
     }
 }
-
-int socket_create(int port) {
-    int socket_server, sockfd;
-    struct sockaddr_in s_addr, c_addr;
-    socklen_t len;
-    if ((socket_server = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("socket create");
-        return -1;
-    }
-    s_addr.sin_family = AF_INET;
-    s_addr.sin_port = htons(PORT);
-    s_addr.sin_addr.s_addr = htons(INADDR_ANY);
-    
-    int opt = 1;
-    setsockopt(socket_server, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(opt));
-
-
-    if ((bind(socket_server, (struct sockaddr*)&s_addr, sizeof(struct sockaddr))) < 0) {
-        perror("bind");
-        return -1;
-    }
-    if (listen(socket_server, 10) < 0) {
-        perror("listen");
-        return -1;
-    }
-    return socket_server;
-}
-
