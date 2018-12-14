@@ -268,7 +268,7 @@ void *func(void *arg) {
                         } else {
                             printf("connection built! recv begins!\n");
                             // 创建文件夹 对收到的client日志进行处理(保存)
-                            char dirname[100] = "/home/chongh/Linux/";
+                            char dirname[100] = "/home/chongh/Homework/log_sys/master/";
                             strcat(dirname, inet_ntoa(temp_addr.sin_addr));
                             if (NULL == opendir(dirname)) {
                                 mkdir(dirname, 0777);
@@ -276,14 +276,23 @@ void *func(void *arg) {
                             char f0[100] = {0};
                             strcpy(f0, dirname);
                             strcat(f0, "/cpu_log.txt");
-                            FILE *fp0 = fopen(f0, "w");
-                            int len = 0; char buf[MAX_SIZE + 1];
+                            FILE *fp0;
+                            if ((fp0 = fopen(f0, "w+")) == NULL) {
+                                perror("error opening file");
+                                exit(0);
+                            }
+                            int len = 0; char buf[MAX_SIZE + 1] = {0};
                             while ((len = recv(data_sockfd, buf, MAX_SIZE, 0)) > 0) {
                                 buf[len] = '\0';
                                 printf("%s:%d : recv %d 字节 %s\n", inet_ntoa(temp_addr.sin_addr),ntohs(temp_addr.sin_port), len, buf);
                                 fflush(stdout);
-                                fwrite(buf, 1, len, fp0);                
+                                //fprintf(fp0, "%s\n", buf);
+                                fwrite(buf, 1, len, fp0);
+                                memset(buf, 0, sizeof(buf));                
                             }
+                            // 文件打开后,一定要正确关闭!!!!!!
+                            fclose(fp0);
+                            printf("recv ends!\n");
                         }
                     } else {
                         printf("code = %s\n", code);

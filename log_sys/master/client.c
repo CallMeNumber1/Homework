@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) {
                 // 表示接受到了master对于cpu信息的请求
                 // 回复200表示存在cpu信息文件
                 // TODO:回复400表示不存在cpu信息文件, 进入另外的业务逻辑
+                // TODO:master每要求一种日志文件,是否都要新建一个监听端口?
                 printf("accept requst code 100\n");
                 strcpy(code, "200\0");
                 send(confd, code, strlen(code), 0);
