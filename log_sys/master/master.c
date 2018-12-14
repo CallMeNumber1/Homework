@@ -29,6 +29,8 @@
 // 最多设置的线程数
 #define INS 5
 #define PORT 8080
+#define CLIENT_PORT 1234
+#define MAX_SIZE 4096
 pthread_mutex_t mut;
 typedef struct mypara {
     char *s;
@@ -51,7 +53,7 @@ Node insert(Node *head, char *ip_str, int sockfd) {
     // 封装sockaddr_in结构体
     struct sockaddr_in t_addr;
     t_addr.sin_family = AF_INET;
-    t_addr.sin_port = htons(8000);
+    t_addr.sin_port = htons(CLIENT_PORT);              // client端监听的端口
     t_addr.sin_addr.s_addr = inet_addr(ip_str);
     Node ret;
     ret.next = head;
@@ -129,7 +131,7 @@ int main() {
     char *prename = get_conf_value("./init.conf", "prename", value);
     char *start = get_conf_value("./init.conf", "start", value);
     char *finish = get_conf_value("./init.conf", "finish", value);
-    
+    /*   
     for (int i = atoi(start); i <= atoi(finish); i++) {
         char temp[20];
         strcpy(temp, prename);
@@ -142,7 +144,7 @@ int main() {
         linkedlist[ind] = ret.next;
         queue[ind]++;
     }
-    
+    */
     for (int i = 0; i < INS; i++) {
         // 设置num的值后将para传入任务，可用来标识线程
         para[i].num = i; 
@@ -243,7 +245,51 @@ void *func(void *arg) {
                 output2(linkedlist[para->num], para->num);
             } else {
                 //printf("p->addr: %s:%d\n", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
+            
                 sleep(2);
+                char code[4] = "100\0"; 
+                send(sockfd, code, strlen(code), 0);
+                int len;
+                while ((len = recv(sockfd, code, 3, 0)) > 0) {
+                    code[3] = '\0';
+                    if (strcmp(code, "200") == 0) {                 // 收到返回值200,主动连接client
+                        printf("ready to accept sysinfo\n");
+                        int data_sockfd;
+                        if ((data_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                            perror("Socket");
+                            exit(0);
+                        }
+                        // 与client建立连接
+                        struct sockaddr_in temp_addr = p->addr;
+                        temp_addr.sin_port = htons(6666);
+                        if (connect(data_sockfd, (struct sockaddr *)&temp_addr, sizeof(temp_addr)) < 0) {
+                            perror("Connect");
+                            exit(0);
+                        } else {
+                            printf("connection built! recv begins!\n");
+                            // 创建文件夹 对收到的client日志进行处理(保存)
+                            char dirname[100] = "/home/chongh/Linux/";
+                            strcat(dirname, inet_ntoa(temp_addr.sin_addr));
+                            if (NULL == opendir(dirname)) {
+                                mkdir(dirname, 0777);
+                            }
+                            char f0[100] = {0};
+                            strcpy(f0, dirname);
+                            strcat(f0, "/cpu_log.txt");
+                            FILE *fp0 = fopen(f0, "w");
+                            int len = 0; char buf[MAX_SIZE + 1];
+                            while ((len = recv(data_sockfd, buf, MAX_SIZE, 0)) > 0) {
+                                buf[len] = '\0';
+                                printf("%s:%d : recv %d 字节 %s\n", inet_ntoa(temp_addr.sin_addr),ntohs(temp_addr.sin_port), len, buf);
+                                fflush(stdout);
+                                fwrite(buf, 1, len, fp0);                
+                            }
+                        }
+                    } else {
+                        printf("code = %s\n", code);
+                    }
+                }
+                
             }
 
 /*
