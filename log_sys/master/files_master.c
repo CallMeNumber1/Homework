@@ -247,74 +247,69 @@ void *func(void *arg) {
                 //printf("p->addr: %s:%d\n", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
             
                 sleep(2);
-                char code[4] = "100\0"; 
-                send(sockfd, code, strlen(code), 0);
-                int len;
-                while ((len = recv(sockfd, code, 3, 0)) > 0) {
-                    code[3] = '\0';
-                    if (strcmp(code, "200") == 0) {                 // 收到返回值200,主动连接client
-                        printf("ready to accept sysinfo\n");
-                        int data_sockfd;
-                        if ((data_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-                            perror("Socket");
-                            exit(0);
-                        }
-                        // 与client建立连接
-                        struct sockaddr_in temp_addr = p->addr;
-                        temp_addr.sin_port = htons(6666);
-                        if (connect(data_sockfd, (struct sockaddr *)&temp_addr, sizeof(temp_addr)) < 0) {
-                            perror("Connect");
-                            exit(0);
-                        } else {
-                            printf("connection built! recv begins!\n");
-                            // 创建文件夹 对收到的client日志进行处理(保存)
-                            char dirname[100] = "/home/chongh/Homework/log_sys/master/";
-                            strcat(dirname, inet_ntoa(temp_addr.sin_addr));
-                            if (NULL == opendir(dirname)) {
-                                mkdir(dirname, 0777);
-                            }
-                            char f0[100] = {0};
-                            strcpy(f0, dirname);
-                            strcat(f0, "/cpu_log.txt");
-                            FILE *fp0;
-                            if ((fp0 = fopen(f0, "w+")) == NULL) {
-                                perror("error opening file");
+                // 100代表cpu, 101代表内存, 102代表磁盘
+                char reqcode[3][4] = {"100\0", "101\0", "102\0"}; 
+                char respcode[3][4] = {"200", "201", "202"};
+                char code[4];
+                char log_file[3][20] = {"/cpu_log.txt", "/mem_log.txt", "/disk_log.txt"};
+                for (int i = 0; i < 3; i++) {
+                    send(sockfd, reqcode[i], strlen(reqcode[i]), 0);
+                    int len;
+                    // 将下面的while改成if就可以实现多个文件传输了
+                    // TODO: 为什么传着传着会出现Connection refused!
+                    if ((len = recv(sockfd, code, 3, 0)) > 0) {
+                        code[3] = '\0';
+                        if (strcmp(code, respcode[i]) == 0) {                 // 收到返回值200,主动连接client
+                            printf("ready to accept info %s\n", reqcode[i]);
+                            int data_sockfd;
+                            if ((data_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                                perror("Socket");
                                 exit(0);
                             }
-                            int len = 0; char buf[MAX_SIZE + 1] = {0};
-                            while ((len = recv(data_sockfd, buf, MAX_SIZE, 0)) > 0) {
-                                buf[len] = '\0';
-                                printf("%s:%d : recv %d 字节 %s\n", inet_ntoa(temp_addr.sin_addr),ntohs(temp_addr.sin_port), len, buf);
-                                fflush(stdout);
-                                //fprintf(fp0, "%s\n", buf);
-                                fwrite(buf, 1, len, fp0);
-                                memset(buf, 0, sizeof(buf));                
+                            // 与client建立连接
+                            struct sockaddr_in temp_addr = p->addr;
+                            temp_addr.sin_port = htons(6666 + i);
+                            if (connect(data_sockfd, (struct sockaddr *)&temp_addr, sizeof(temp_addr)) < 0) {
+                                perror("Data Connect");
+                                exit(0);
+                            } else {
+                                printf("connection built! recv begins!\n");
+                                // 创建文件夹 对收到的client日志进行处理(保存)
+                                char dirname[100] = "/home/chongh/Homework/log_sys/master/";
+                                strcat(dirname, inet_ntoa(temp_addr.sin_addr));
+                                if (NULL == opendir(dirname)) {
+                                    mkdir(dirname, 0777);
+                                }
+                                char f0[100] = {0};
+                                strcpy(f0, dirname);
+                                strcat(f0, log_file[i]);
+                                FILE *fp0;
+                                if ((fp0 = fopen(f0, "a+")) == NULL) {
+                                    perror("error opening file");
+                                    exit(0);
+                                }
+                                int len = 0; char buf[MAX_SIZE + 1] = {0};
+                                while ((len = recv(data_sockfd, buf, MAX_SIZE, 0)) > 0) {
+                                    buf[len] = '\0';
+                                    printf("%s:%d : recv %d 字节 %s\n", inet_ntoa(temp_addr.sin_addr),ntohs(temp_addr.sin_port), len, buf);
+                                    fflush(stdout);
+                                    //fprintf(fp0, "%s\n", buf);
+                                    fwrite(buf, 1, len, fp0);
+                                    memset(buf, 0, sizeof(buf));                
+                                }
+                                // 文件打开后,一定要正确关闭!!!!!!
+                                fclose(fp0);
+                                printf("recv ends!\n");
+                                close(data_sockfd);                     // 短连接,数据收发完就关闭
                             }
-                            // 文件打开后,一定要正确关闭!!!!!!
-                            fclose(fp0);
-                            printf("recv ends!\n");
-                            close(data_sockfd);                     // 短连接,数据收发完就关闭
+                        } else {
+                            printf("code = %s\n", code);
                         }
-                    } else {
-                        printf("code = %s\n", code);
                     }
-                }
-                
+                    printf("%s ends\n", reqcode[i]);
+                }   //for
+                printf("for ends\n");
             }
-
-/*
-            while (1) {
-                if ((byte = recv(client_sockfd, buffer, 100, 0)) == -1) {
-                    perror("recv");
-                    exit(0);
-                }
-                if (strcmp(buffer, "exit") == 0) {
-                    break;
-                }
-                printf("receive from client is %s\n", buffer);
-            }
-            close(client_sockfd);
-*/
             p = p->next;
         }
     }
