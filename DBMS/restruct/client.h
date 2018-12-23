@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <stdarg.h>
+#include <io.h>
 typedef struct mypara {
     char *s;
     //　传入参数标志是哪个线程

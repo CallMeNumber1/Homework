@@ -1,8 +1,8 @@
 /*************************************************************************
-	> File Name: thread.c
+	> File Name: master.c
 	> Author: ChongH
 	> Mail: 304451676@qq.com
-	> Created Time: 2018年11月13日 星期二 20时02分50秒
+	> Created Time: 2018年12月23日 星期日 09时10分50秒
  ************************************************************************/
 
 #include <pthread.h>
@@ -29,9 +29,11 @@
 // 最多设置的线程数
 #define INS 5
 #define PORT 8080
-#define CLIENT_PORT 1234
+#define CLIENT_PORT 8888
 #define MAX_SIZE 4096
-pthread_mutex_t mut;
+#define NUM 3
+#define WARN_PORT 5555
+pthread_mutex_t mut[NUM];
 typedef struct mypara {
     char *s;
     //　传入参数标志是哪个线程
@@ -76,19 +78,19 @@ void output(Node *head) {
 }
 void output2(Node *head, int num) {
     Node *p = head;
-    char logfile[20];
-    sprintf(logfile, "%d.log", num);
-    FILE *log = fopen(logfile, "a+");
+    //char logfile[20];
+    //sprintf(logfile, "%d.log", num);
+    ///FILE *log = fopen(logfile, "a+");
     printf("\033[33m-----queue[%d]:%d个元素-----\033[0m", num, queue[num]);
     printf("[ ");
-    fprintf(log, "[ ");
+    //fprintf(log, "[ ");
     while (p) {
         printf("%s:%d ", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
-        fprintf(log, "%s:%d ", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
+        //fprintf(log, "%s:%d ", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
         p = p->next;
     }
     printf("]\n");
-    fprintf(log, "]\n");
+    //fprintf(log, "]\n");
 }
 // 传出的是最小的下标，而非最小值!!!!!!
 int find_min(int n, int *arr) {
@@ -102,6 +104,7 @@ int find_min(int n, int *arr) {
     return ind;
 }
 void *func(void *arg);
+void *warn_func(void *arg);
 int socket_create(int port);
 char *get_conf_value(char *path_name, char *key_name, char *value);
 // 检查是否已存在这个IP
@@ -118,7 +121,9 @@ int isrepeat(struct sockaddr_in new) {
 }
 Node delete_node(Node *head, int len, struct sockaddr_in old);
 int main() {
-    pthread_mutex_init(&mut, NULL);
+    for (int i = 0; i < NUM; i++) {
+        pthread_mutex_init(&mut[i], NULL);
+    }
     // 初始化链表数组
     for (int i = 0; i <= INS; i++) {
         linkedlist[i] = NULL;
@@ -145,6 +150,15 @@ int main() {
         queue[ind]++;
     }
     */
+
+    // 用来接受报警信息的线程
+    pthread_t warn;                                       
+    if (pthread_create(&warn, NULL, warn_func, NULL) == -1) {
+        perror("warn pthread create");
+        exit(1);
+    }
+
+
     for (int i = 0; i < INS; i++) {
         // 设置num的值后将para传入任务，可用来标识线程
         para[i].num = i; 
@@ -178,11 +192,11 @@ int main() {
         // 选择元素较少的链表插入,均衡线程间的负载
         int ind = find_min(INS, queue);
         Node ret;
-        pthread_mutex_lock(&mut);
+        pthread_mutex_lock(&mut[ind]);
         ret = insert(linkedlist[ind], temp, confd);
         linkedlist[ind] = ret.next;
         queue[ind]++;
-        pthread_mutex_unlock(&mut);
+        pthread_mutex_unlock(&mut[ind]);
         for (int i = 0; i < INS; i++) {
             printf("%d ", queue[i]);
             printf(" ....... ");
@@ -204,6 +218,40 @@ int main() {
    
     return 0;
 }
+void *warn_func(void *arg) {
+    int warn_listen = socket_create(WARN_PORT);
+    int warn_confd;
+    struct sockaddr_in client_addr;
+    socklen_t len = sizeof(client_addr);
+    while (1) {
+        if ((warn_confd = accept(warn_listen, (struct sockaddr*)&client_addr, &len)) < 0) {
+            perror("warn accept");
+            continue;
+        }
+        char filename[50] = "./Log/warning";
+        strcat(filename, inet_ntoa(client_addr.sin_addr));
+        if (NULL == opendir(filename)) {
+            mkdir(filename, 0777);
+        }
+        strcat(filename, "/cpu.log");
+        FILE *fp = fopen(filename, "a+");
+        if (fp == NULL) {
+            perror("error opening file");
+            exit(0);
+        }
+        int len = 0; char buffer[MAX_SIZE + 1] = {0};
+        while ((len = recv(warn_confd, buffer, MAX_SIZE, 0)) > 0) {
+            buffer[len] = '\0';
+            fflush(stdout);
+            fwrite(buffer, 1, len, fp);
+            memset(buffer, 0, sizeof(buffer));                
+        }
+        fclose(fp);
+        close(warn_confd);
+    }
+    close(warn_listen);
+    return NULL;
+}
 Node delete_node(Node *head, int para_num, struct sockaddr_in old) {
     printf("\033[31m-----Delete begining-----\033[0m\n");
     Node ret, *p;
@@ -224,6 +272,11 @@ void *func(void *arg) {
     mypara *para = (mypara *)arg;
     while (1) {
         Node *p = linkedlist[para->num];
+        if (p == NULL) {
+            printf("pthread %d job queue empty, sleep\n", para->num);
+            sleep(5);
+            //continue;
+        }
         while (p) {
             // 先判断client是否还活着
             int client_sockfd = p->sockfd, byte;
@@ -236,85 +289,70 @@ void *func(void *arg) {
             if (connect(sockfd, (struct sockaddr *)&p->addr, sizeof(p->addr)) < 0) {
                 perror("connect");
                 //printf("sockfd = %d\n", sockfd);
-                pthread_mutex_lock(&mut);
+                pthread_mutex_lock(&mut[para->num]);
                 Node ret = delete_node(linkedlist[para->num], para->num, p->addr);
                 linkedlist[para->num] = ret.next;
                 queue[para->num]--;
                 printf("queue[%d]剩余 %d 个元素\n", para->num, queue[para->num]);
-                pthread_mutex_unlock(&mut);
+                pthread_mutex_unlock(&mut[para->num]);
                 output2(linkedlist[para->num], para->num);
             } else {
-                //printf("p->addr: %s:%d\n", inet_ntoa(p->addr.sin_addr), p->addr.sin_port);
-            
                 sleep(2);
-                char code[4] = "100\0"; 
-                send(sockfd, code, strlen(code), 0);
-                int len;
-                while ((len = recv(sockfd, code, 3, 0)) > 0) {
-                    code[3] = '\0';
-                    if (strcmp(code, "200") == 0) {                 // 收到返回值200,主动连接client
-                        printf("ready to accept sysinfo\n");
-                        int data_sockfd;
-                        if ((data_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-                            perror("Socket");
-                            exit(0);
-                        }
-                        // 与client建立连接
-                        struct sockaddr_in temp_addr = p->addr;
-                        temp_addr.sin_port = htons(6666);
-                        if (connect(data_sockfd, (struct sockaddr *)&temp_addr, sizeof(temp_addr)) < 0) {
-                            perror("Connect");
-                            exit(0);
-                        } else {
-                            printf("connection built! recv begins!\n");
-                            // 创建文件夹 对收到的client日志进行处理(保存)
-                            char dirname[100] = "/home/chongh/Homework/log_sys/master/";
-                            strcat(dirname, inet_ntoa(temp_addr.sin_addr));
-                            if (NULL == opendir(dirname)) {
-                                mkdir(dirname, 0777);
-                            }
-                            char f0[100] = {0};
-                            strcpy(f0, dirname);
-                            strcat(f0, "/cpu_log.txt");
-                            FILE *fp0;
-                            if ((fp0 = fopen(f0, "w+")) == NULL) {
-                                perror("error opening file");
+                // 100代表cpu, 101代表内存, 102代表磁盘
+                char log_files[NUM][50] = {"/cpu.log", "/mem.log", "/disk.log"};
+                for (int i = 100; i < 100 + NUM; i++) {
+                    send(sockfd, &i, 4, 0);
+                    int len, code;
+                    if ((len = recv(sockfd, &code, 4, 0)) > 0) {
+                        if (code >= 200) {                 // 收到返回值200,主动连接client
+                            printf("ready to accept info %s\n", log_files[code - 200]);
+                            int data_sockfd;
+                            if ((data_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                                perror("data socket");
                                 exit(0);
                             }
-                            int len = 0; char buf[MAX_SIZE + 1] = {0};
-                            while ((len = recv(data_sockfd, buf, MAX_SIZE, 0)) > 0) {
-                                buf[len] = '\0';
-                                printf("%s:%d : recv %d 字节 %s\n", inet_ntoa(temp_addr.sin_addr),ntohs(temp_addr.sin_port), len, buf);
-                                fflush(stdout);
-                                //fprintf(fp0, "%s\n", buf);
-                                fwrite(buf, 1, len, fp0);
-                                memset(buf, 0, sizeof(buf));                
+                            // 与client建立连接
+                            struct sockaddr_in temp_addr = p->addr;
+                            if (connect(data_sockfd, (struct sockaddr *)&temp_addr, sizeof(temp_addr)) < 0) {
+                                perror("data connect");
+                                exit(0);
+                            } else {
+                                printf("connection built! recv begins!\n");
+                                // 创建文件夹 对收到的client日志进行处理(保存)
+                                char filename[100] = "/home/chongh/Homework/DBMS/restruct/";
+                                strcat(filename, inet_ntoa(temp_addr.sin_addr));
+                                if (NULL == opendir(filename)) {
+                                    mkdir(filename, 0777);
+                                }
+                                strcat(filename, log_files[code - 200]);
+                                pthread_mutex_lock(&mut[para->num]);
+                                FILE *fp;
+                                if ((fp = fopen(filename, "a+")) == NULL) {
+                                    perror("error opening file");
+                                    exit(0);
+                                }
+                                int len = 0; char buf[MAX_SIZE + 1] = {0};
+                                while ((len = recv(data_sockfd, buf, MAX_SIZE, 0)) > 0) {
+                                    buf[len] = '\0';
+                                    printf("%s:%d : recv %d 字节 %s\n", inet_ntoa(temp_addr.sin_addr),ntohs(temp_addr.sin_port), len, buf);
+                                    fflush(stdout);
+                                    fwrite(buf, 1, len, fp);
+                                    memset(buf, 0, sizeof(buf));                
+                                }
+                                // 文件打开后,一定要正确关闭!!!!!!
+                                fclose(fp);
+                                pthread_mutex_unlock(&mut[para->num]);
+                                printf("recv ends!\n");
+                                close(data_sockfd);                     // 短连接,数据收发完就关闭
                             }
-                            // 文件打开后,一定要正确关闭!!!!!!
-                            fclose(fp0);
-                            printf("recv ends!\n");
-                            close(data_sockfd);                     // 短连接,数据收发完就关闭
+                        } else {
+                            printf("code = %d\n", code);
                         }
-                    } else {
-                        printf("code = %s\n", code);
                     }
-                }
-                
+                }   //for
+                printf("for ends\n");
             }
-
-/*
-            while (1) {
-                if ((byte = recv(client_sockfd, buffer, 100, 0)) == -1) {
-                    perror("recv");
-                    exit(0);
-                }
-                if (strcmp(buffer, "exit") == 0) {
-                    break;
-                }
-                printf("receive from client is %s\n", buffer);
-            }
-            close(client_sockfd);
-*/
+            close(sockfd);      // 传完断开长连接
             p = p->next;
         }
     }
@@ -348,7 +386,7 @@ int socket_create(int port) {
         return -1;
     }
     s_addr.sin_family = AF_INET;
-    s_addr.sin_port = htons(PORT);
+    s_addr.sin_port = htons(port);
     s_addr.sin_addr.s_addr = htons(INADDR_ANY);
     
     int opt = 1;

@@ -7,8 +7,9 @@
 #include "client.h"
 #define MAX_SIZE 4096
 #define MASTER_PORT 8080
-#define MASTER_ADDR "10.181.71.96"
+#define MASTER_ADDR "127.0.0.1"
 #define CLIENT_PORT 8888
+#define WARN_PORT 5555
 #define NUM 3
 
 char *get_conf_value(char *path_name, char *key_name, char *value);
@@ -19,7 +20,7 @@ void *heart(void *arg);
 pthread_mutex_t mut[NUM];
 char log_files[NUM][20] = {"cpu.log", "disk.log", "memory.log"};
 char script_files[NUM][50] = {"bash ./sysinfo/check_cpu.sh", "bash ./sysinfo/check_memory.sh", "bash ./sysinfo/disk.sh"};
-int interval[NUM] = {5, 10, 10};
+int interval[NUM] = {5, 10, 10};                        // 每个脚本执行的时间间隔
 
 int main(int argc, char *argv[]) {
     pthread_t t[NUM + 1], t_heart;
@@ -31,7 +32,8 @@ int main(int argc, char *argv[]) {
     // 初始化互斥锁
     for (int i = 0; i < NUM; i++) {
         pthread_mutex_init(&mut[i], NULL);
-    // 开启NUM个线程
+    }
+    // 开启NUM个线程,每个线程执行一个脚本
     // 先开启3个, 后续开启6个
     for (int i = 0 ; i < NUM; i++) {
         para[i].num = i;
@@ -42,9 +44,72 @@ int main(int argc, char *argv[]) {
     }
     // 主线程的任务
     // TODO:接收master端的要求,建立连接发送日志文件
+    /** 
+     * master端线程取出对应工作队列中的主机
+     * 尝试连接,如果连接上,则此为长连接
+     * 依次发送100~100+NUM,分别表示要求不同的脚本信息
+     * client收到后回复200~200+NUM,表示存在相应的日志文件
+     * master端线程收到回复后建立短连接到client,client开放端口为CLIENT_PORT:8888
+     * client接受连接后,将文件发送给master端,之后短连接关闭,此过程注意加互斥锁,因为读的同时其他线程在写
+     * master端的长连接也关闭
+     * 循环以上过程
+    **/
+    // TODO:发送报警信息
+    int listen_sock = socket_create(CLIENT_PORT), confd;
     while (1) {
+        struct sockaddr_in master_addr;
+        socklen_t len = sizeof(master_addr);
+        if ((confd = accept(listen_sock, (struct sockaddr*)&master_addr, &len)) == -1) {
+            perror("accept");
+            return -1;
+        }
+        char *temp = inet_ntoa(master_addr.sin_addr);
+        printf("receive connect from master:%s\n", temp);
         
+        // master连接后, 进行收发日志文件
+        int code;
+        while (1) { 
+            if (recv(confd, &code, 4, 0) <= 0) break;
+            char filename[20] = "./Log/";
+            strcat(filename, log_files[code - 100]);
+            printf("code: %d, file: %s\n", code, filename);
+            if (access(filename, 0)) {
+                perror("file not exist!");
+                exit(0);                        // 返回400?
+            } else {
+                // 存在此文件,则建立连接进行收发数据
+                code += 100;
+                send(confd, &code, 4, 0);               // 返回200
+                int data_confd;                         // 短连接(数据连接)
+                struct sockaddr_in data_addr;           
+                int len = sizeof(data_addr);
+                if ((data_confd = accept(listen_sock, (struct sockaddr*)&data_addr, &len)) == -1) {
+                    perror("data accept");
+                    return -1;
+                }
+                printf("begin send sysinfo %d to %s\n", code, inet_ntoa(data_addr.sin_addr));
+                char buf[MAX_SIZE + 1] = {0};
+                pthread_mutex_lock(&mut[code - 200]);
+                FILE *fp = fopen(filename, "r");
+                while (fread(buf, 1, MAX_SIZE, fp) > 0) {
+                    buf[MAX_SIZE] = '\0';
+                    send(data_confd, buf, strlen(buf), 0);
+                    printf("data:%s\n", buf);
+                    memset(buf, 0, sizeof(buf));
+                }
+                fclose(fp);
+                // 日志文件传送完毕后即删除
+                char del_command[50] = {0};         
+                sprintf(del_command, "%s > %s", "", filename);
+                system(del_command);
+                pthread_mutex_unlock(&mut[code - 200]);
+                close(data_confd);
+            }
+        }   // 收发文件
+        close(confd);       // 传输完毕断开长连接
     }
+
+    
     return 0;
 }
 void *heart(void *arg) {
@@ -57,16 +122,15 @@ void *heart(void *arg) {
         }
         dest_addr.sin_family = AF_INET;
         dest_addr.sin_port = htons(MASTER_PORT);
-        dest_addr.sin_addr.s_addr = inet.addr(MASTER_ADDR);
+        dest_addr.sin_addr.s_addr = inet_addr(MASTER_ADDR);
         if (connect(sockfd, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) < 0) {
             perror("heart connect");
-            exit(1);
         }
         close(sockfd);
-        sleep(3);                                   // 每隔一段时间发送一次心跳
+        sleep(5);                                   // 每隔一段时间发送一次心跳
     }
 }
-void *func(void *arg) {
+void *func(void *arg) {                             // 执行相应的脚本
     mypara *para = (mypara *)arg;
     char buffer[MAX_SIZE + 1] = {0};
     int id = para->num;
@@ -83,11 +147,37 @@ void *func(void *arg) {
         }
         strcat(log_path, "/");
         strcat(log_path, log_files[id]);
-        printf("open %s\n", log_path);
+        printf("write %s\n", log_path);
         pthread_mutex_lock(&mut[id]);
         FILE *fp = fopen(log_path, "a+");
         while (fread(buffer, 1, MAX_SIZE, pp) > 0) {
             buffer[MAX_SIZE] = '\0';
+            if (id == 0) {                              // 当接收cpu信息时,查看是否需要报警
+                // FIXME:上线后将normal改成warning
+                // TODO:目前仅能检查cpu的报警信息
+                char *substr = strstr(buffer, "normal");        
+                if (substr != NULL) {
+                    // TODO:向master发送报警信息
+                    int warn_sock;
+                    struct sockaddr_in dest_addr;
+                    if ((warn_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                        perror("warn socket");
+                        exit(0);
+                    }
+                    dest_addr.sin_family = AF_INET;
+                    dest_addr.sin_port = htons(WARN_PORT);
+                    dest_addr.sin_addr.s_addr = inet_addr(MASTER_ADDR);
+                    if (connect(warn_sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) < 0) {
+                        perror("warn connect");
+                        exit(0);
+                    } else {
+                        send(warn_sock, buffer, strlen(buffer), 0);
+                        close(warn_sock);
+                    }
+                } else {
+                    printf("cpu state normal\n");
+                }
+            }
             fwrite(buffer, 1, strlen(buffer), fp);
             memset(buffer, 0, sizeof(buffer));
         }
@@ -145,7 +235,6 @@ int socket_create(int port) {
                 return -1;
             
     }
-        return socket_server;
-
+    return socket_server;
 }
 
