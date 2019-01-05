@@ -96,28 +96,30 @@ int ShiftAnd(char *str, char *pattern) {
 
 int ShiftAndAny(char *str, char *pattern) {
     #define BASE 128
-    #define MAX 100
-    char code[BASE][MAX] = {0}, len = 0;
+    char **code = (char **)malloc(sizeof(char *) * BASE);
     for (int i = 0; i < BASE; i++) {
-        for (int j = 0; j < MAX - 1; j++) {
+        code[i] = (char *)calloc(strlen(pattern) + 1, sizeof(char));    // 空间大小随模式串大小变化
+    }
+    int len = 0;
+    for (int i = 0; i < BASE; i++) {                        // 模拟，初始化成二进制'0'
+        for (int j = 0; j < strlen(pattern) - 1; j++) {
             code[i][j] = '0';
         }
     }
-    for (len = 0; pattern[len]; len++) {
-        code[pattern[len]][len] = '1';
+    for (len = 0; pattern[len]; len++) {                    // 生成初始化code数组
+        code[pattern[len]][len] = '1';  
         //printf("char:%c, code: %s\n",pattern[len], code[pattern[len]]); 
     }
-   // printf("len = %d\n", len);
-    char p[MAX] = {0};
+    char *p = (char *)calloc(strlen(pattern) + 1, sizeof(char));
     for (int i = 0; i < len; i++) p[i] = '0';
     for (int i = 0; str[i]; i++) {
         int temp = len;
         //printf("pre p:%s\n", p);
-        for (int j = temp; j >= 0; j--) p[j + 1] = p[j];
-        p[0] = '1';
-        temp++; // 模拟二进制左移运算
+        for (int j = temp; j >= 0; j--) p[j + 1] = p[j];    // 模拟二进制左移运算,因为是从二进制低位到高位表示，所以字符串按位右移
+        p[0] = '1';                                         // 模拟二进制左移后“| 1”的运算
+        temp++;                                             // 模拟二进制左移运算后位数加1的操作
         //printf("post p:%s\n", p);
-        for (int k = 0; k < temp; k++) {
+        for (int k = 0; k < temp; k++) {                    // 模拟二进制的&运算
             if (p[k] == '1' && code[str[i]][k] == '1') {
                 p[k] = '1';
             } else {
@@ -128,7 +130,6 @@ int ShiftAndAny(char *str, char *pattern) {
     }
     return -1;
     #undef BASE
-    #undef MAX
 }
 
 
