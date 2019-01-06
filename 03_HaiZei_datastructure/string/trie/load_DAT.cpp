@@ -19,7 +19,7 @@ void dfs(int ind, int k, char *str) {
     for (int i = 0; i < 26; i++) {
         int check = fabs(trie[trie[ind].base + i].check);
         // 存在子节点，并且子节点不等于父节点(排除1 1 1根节点这个特殊情况, 不然段错误)
-        if (check - ind == 0 && trie[ind].base + i != 1) {
+        if (check - ind == 0 && trie[ind].base + i != check) {
             str[k] = i + 'a';
             str[k + 1] = 0;
             dfs(trie[ind].base + i, k + 1, str);
