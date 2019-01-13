@@ -68,6 +68,8 @@ int Sunday(char *str, char *pattern) {
     return -1;
     #undef BASE
 }
+
+// FIXME:当字符串超过一定长度后就出错(因为整型范围问题)
 int ShiftAnd(char *str, char *pattern) {
     // TODO:改成支持任意长度字符的算法
     // TODO:深刻理解数据结构=数据定义+数据操作
