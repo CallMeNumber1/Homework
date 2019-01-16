@@ -1,0 +1,26 @@
+/*************************************************************************
+	> File Name: main.c
+	> Author: ChongH
+	> Mail: 304451676@qq.com
+	> Created Time: 2019年01月10日 星期四 20时34分47秒
+ ************************************************************************/
+
+#include <stdio.h>
+#include "head.h"
+
+void how_to_select(demo *p, int v) {
+    int ret = demo_add(p, v);
+    printf("res = %d\n", ret);
+}
+
+int main() {
+    demo *p1 = demo_init(1, 2);
+    derived *p2 = derived_init(1, 2, 3);
+    printf("----demo output----\n");
+    printf("i = %d, j = %d\n", getI(p1), getJ(p1));
+    printf("add = %d\n", demo_add(p1, 5));
+    
+    printf("----derived output----\n");
+    printf("i = %d, j = %d, k = %d\n", getI(p2), getJ(p2), getK(p2));
+    return 0;
+}
