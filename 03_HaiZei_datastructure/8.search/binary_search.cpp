@@ -25,11 +25,13 @@ int binary_search1(int *num, int n, int x) {
     return -1;
 }
 
+
 // 二分特殊情况1
-//111111000000
+// 111111000000
+// 找最后一个1
 int binary_search2(int *num, int n) {
     int head = - 1, tail = n - 1, mid;
-    // 因为是要找到位置,而非元素
+    // 因为是要找到位置,而非元素,因此不是head<=tail,要找到区间只有一个元素时
     while (head < tail) {
         // 加1后再除2, 这样在最后剩两个数时取得较后面的数,避免死循环
         mid = (head + tail + 1) >> 1;
@@ -42,11 +44,13 @@ int binary_search2(int *num, int n) {
 }
 
 // 二分特殊情况2
-//000000111111
+// 000000111111
+// 找到第一个1
 int binary_search3(int *num, int n) {
+    // tail指向最后一个元素的后一位
     int head = 0, tail = n, mid;
-    while (head < tail) {
-        mid = (head + tail) >> 1;
+    while (head < tail) {       // 当head和tail没有重合时
+        mid = (head + tail) >> 1; 
         if (num[mid] == 1) tail = mid;
         else head = mid + 1;
     }
