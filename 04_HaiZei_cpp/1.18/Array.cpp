@@ -9,6 +9,8 @@
 #include <string>
 using namespace std;
 
+
+// 将int换成T即可做成数组模板
 class Array {
     private:
         int m_len;
@@ -21,6 +23,7 @@ class Array {
         }
         m_len = len;
     }
+    // 重载了=号运算符
     Array& operator=(const Array &obj) {
         if (this != &obj) {         // 排除自赋值
             int *p = new int[obj.m_len];
@@ -36,6 +39,14 @@ class Array {
         }
         return *this;
     }
+    // 增加了[]运算符重载,则set、get函数可以略去了
+    int& operator[](int index) {
+        if (index < m_len && index >= 0) {
+            return data[index];
+        } else {
+            // TODO:异常处理
+        }
+    }
     void set(int index, int value) {
         if (index >= 0 && index < m_len) {
             data[index] = value;
@@ -50,10 +61,10 @@ class Array {
 int main() {
     Array a1(5);
     for (int i = 0; i < 5; i++) {
-        a1.set(i, i + 1);
+        a1[i] = i + 1;
     }
     for (int i = 0; i < 5; i++) {
-        cout << a1.get(i) << " ";
+        cout << a1[i] << " ";
     }
     cout << endl;
     
