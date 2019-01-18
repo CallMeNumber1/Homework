@@ -23,28 +23,35 @@ class Complex {
     double getI() {
         return imag;
     }
-    Complex operator+(Complex &c2);
-    Complex operator-(Complex &c2);
-    Complex operator*(Complex &c2);
-    Complex operator/(Complex &c2);
-    bool operator==(Complex &c2);
-    bool operator!=(Complex &c2);
+    Complex operator+(const Complex &c2);
+    Complex operator-(const Complex &c2);
+    Complex operator*(const Complex &c2);
+    Complex operator/(const Complex &c2);
+    bool operator==(const Complex &c2);
+    bool operator!=(const Complex &c2);
+    Complex& operator=(const Complex &c1) {
+        if (this != &c1) {          // 不允许自赋值
+            this->real = c1.real;
+            this->imag = c1.imag;
+        }
+        return *this;
+    }
 };
 
 // 传递引用是为了少两次拷贝构造
-Complex Complex::operator+(Complex &c2) {
+Complex Complex::operator+(const Complex &c2) {
     Complex ret;
     ret.real = this->real + c2.real;
     ret.imag = this->imag + c2.imag;
     return ret;
 }
-Complex Complex::operator-(Complex &c2) {
+Complex Complex::operator-(const Complex &c2) {
     Complex ret;
     ret.real = this->real - c2.real;
     ret.imag = this->imag - c2.imag;
     return ret;
 }
-Complex Complex::operator*(Complex &c2) {
+Complex Complex::operator*(const Complex &c2) {
     Complex ret;
     double a = this->real, b = this->imag;
     double c = c2.real, d = c2.imag;
@@ -53,7 +60,7 @@ Complex Complex::operator*(Complex &c2) {
     ret.imag = b * c + a * d;
     return ret;
 }
-Complex Complex::operator/(Complex &c2) {
+Complex Complex::operator/(const Complex &c2) {
     Complex ret;
     double a = this->real, b = this->imag;
     double c = c2.real, d = c2.imag;
@@ -61,10 +68,10 @@ Complex Complex::operator/(Complex &c2) {
     ret.imag = (b * c - a * d) / (c * c + d * d);
     return ret;
 }
-bool Complex::operator==(Complex &c2) {
+bool Complex::operator==(const Complex &c2) {
     return this->real == c2.real && this->imag == c2.imag;
 }
-bool Complex::operator!=(Complex &c2) {
+bool Complex::operator!=(const Complex &c2) {
     return this->real != c2.real || this->imag != c2.imag;
 }
 
@@ -83,6 +90,10 @@ int main() {
     cout << ret << endl;
     ret = (c1 != c2);
     cout << ret << endl;
+
+    Complex c4(1, 3);
+    (c4 = c3) = c2;
+    cout << c4.getR() <<  "+" << c4.getI() << "i" << endl;
     return 0;
 }
 
