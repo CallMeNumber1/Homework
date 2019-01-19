@@ -8,8 +8,9 @@
 
 #include <stdio.h>
 
-// 二分
-// 前0后1
+/*  二分
+    可看成前0后1问题
+*/
 int kthSmallest(int matrix[][100], int row, int col, int k) {
     int head = matrix[0][0], tail = matrix[row - 1][col - 1], mid;
     while (head < tail) {
@@ -21,8 +22,8 @@ int kthSmallest(int matrix[][100], int row, int col, int k) {
             while (j >= 0 && matrix[i][j] > mid) j--;
             cnt += (j + 1);
         }
-        if (cnt < k) head = mid + 1;
-        else tail = mid;
+        if (cnt < k) head = mid + 1;        //　不满足时(0)
+        else tail = mid;                    // 满足时(1)
     }
     return head;
 
