@@ -27,5 +27,5 @@ int main() {
             swap(arr[i], arr[arr[i] - 1]);
         }
     } 
-    
+      
 }

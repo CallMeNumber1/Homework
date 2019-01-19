@@ -30,7 +30,8 @@ int atoi(char *str) {
 }
 
 
+
 int main() {
-    
+       
     return 0;
 }
