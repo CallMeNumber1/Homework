@@ -1,0 +1,48 @@
+/*************************************************************************
+	> File Name: ac_dfs.cpp
+	> Author: ChongH
+	> Mail: 304451676@qq.com
+	> Created Time: 2019年01月20日 星期日 09时46分02秒
+ ************************************************************************/
+
+#include <stdio.h>
+#include <stdlib.h>
+#define BASE 26
+#define BEGIN_LETTER 'a'
+
+typedef struct Node {
+    int flag;
+    struct Node *next[BASE];
+    struct Node *fail, *father;
+} Node;
+
+Node *getNewNode() {
+    Node *p = (Node *)calloc(sizeof(Node), 1);
+    return p;
+}
+void insert(Node *root, const char *str) {
+    Node *p = rot;
+    for (int i = 0; i < BASE; i++)  {
+        if (p->next[str[i] - BEGIN_LETTER] == NULL) {
+            p = p->next[str[i] - BEGIN_LETTER] = getNewNode();
+        }
+        p = p->next[str[i] - BEGIN_LETTER];
+    }
+    p->flag = 1;
+    return ;
+}
+
+void clear(Node *node) {
+    if (node == NULL) return ;
+    for (int i = 0; i < BASE; i++) {
+        clear(node->next[i]);
+    }
+    free(node);
+    return ;
+}
+
+int main() {
+
+
+    return 0;
+}
