@@ -46,7 +46,13 @@ void build_ac(Node *node) {
         // 因为正常情况下 往下走之前root当前的失败指针应该已经建立
         if (node->next[i] == NULL) continue;
         // 已经确定过的失败指针不必再确定了
+        // 因为确定父节点失败指针时会连着子节点都确定了
         if (node->next[i]->fail) continue;
+        /* 
+         *  为什么加上此句话不会发生段错误
+            段错误是爆栈引起的
+            为什么加上这句话就不会爆栈
+        */
         Node *p = node->fail, *pre_p = node;
         // 顺着失败指针找上去
         while (p && p->next[i] == NULL) {
@@ -62,6 +68,7 @@ void build_ac(Node *node) {
         build_ac(node->next[i]);
     }
     return ;
+
 
 }
 
