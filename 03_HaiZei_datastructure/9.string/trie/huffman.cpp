@@ -41,7 +41,6 @@ void insert(Node *node, char *str) {
             if (p->next[bit] == NULL) p->next[bit] = getNewNode();
             p = p->next[bit];
         }
-
     }  
     p->flag = 1;
     return ;
