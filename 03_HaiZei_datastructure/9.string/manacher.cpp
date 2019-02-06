@@ -55,6 +55,7 @@ int main() {
     scanf("%s", s);
     printf("%d\n", Manacher());
     
+    return 0;
 }
 
 
