@@ -6,6 +6,7 @@
  ************************************************************************/
 
 #include <iostream>
+#include <stdlib.h>
 #include <string>
 using namespace std;
 typedef struct Node {
@@ -13,14 +14,41 @@ typedef struct Node {
     struct Node *next;
     struct Node *prev;
 } Node;
+Node *init(int val) {
+    Node *p = (Node *)malloc(sizeof(Node));
+    p->data = val;
+    p->next = NULL;
+    p->prev = NULL;
+    return p;
+}
+Node *insert(Node *head, int val) {
+    if (head == NULL) {
+        head = init(val);
+        head->next = head;
+    } else {
+        Node *p = head;
+        while (p->next != head) {
+            p = p->next;
+        }
+        p->next = init(val);
+        p->next->next = head;
+    }
+    return head;
+}
 
 int main() {
     int n, val, m;
-    scanf("%d", &n);
+    cin >> n;
+    Node *head = NULL;
     for (int i = 0; i < n; i++) {
-        scanf("%d", &val);
+        cin >> val;
+        head = insert(head, val);
     }
-    
-
+    Node *p = head;
+    while (p->next != head) {
+        cout << p->data << " ";
+        p = p->next;
+    }
+    cout << p->data << endl;
     return 0;
 }
