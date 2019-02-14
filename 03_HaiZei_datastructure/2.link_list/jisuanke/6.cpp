@@ -25,6 +25,7 @@ Node *insert(Node *head, int val) {
     if (head == NULL) {
         head = init(val);
         head->next = head;
+        head->prev = head;
     } else {
         Node *p = head;
         while (p->next != head) {
@@ -32,10 +33,23 @@ Node *insert(Node *head, int val) {
         }
         p->next = init(val);
         p->next->next = head;
+        p->next->prev = p;
+        head->prev = p->next;
     }
     return head;
 }
-
+Node *search(Node *head, int m) {
+    Node *p = head->next;
+    if (head->data == m) {
+        return head;
+    } else {
+        while (p && p != head) {
+            if (p->data == m) return p;
+            p = p->next;
+        }
+    }
+    return NULL;
+}
 int main() {
     int n, val, m;
     cin >> n;
@@ -44,11 +58,13 @@ int main() {
         cin >> val;
         head = insert(head, val);
     }
-    Node *p = head;
-    while (p->next != head) {
+    cin >> m;
+    Node *p = search(head, m), *pre = p;
+    while (p->prev != pre) {
         cout << p->data << " ";
-        p = p->next;
+        p = p->prev;
     }
     cout << p->data << endl;
     return 0;
 }
+
