@@ -123,7 +123,7 @@ RBTNode *erase_maintain(RBTNode *root) {
     if (root->lchild->color != DOUBLE_BLACK && root->rchild->color != DOUBLE_BLACK) return root;
     /*
      * 此段代码可以代替下面两个if条件
-    #define UNBALANCE(a, b) (root->a->color = DOUBLE_BLACK && !has_red_child(root->b))
+    #define UNBALANCE(a, b) (root->a->color = DOUBLE_BLACK &&root->b->color == BLACK && !has_red_child(root->b))
     if (UNBALANCE(lchild, rchild) || UNBALANCE(rchild, lchild)) {
         root->color += 1;
         root->lchild->color -= 1;
