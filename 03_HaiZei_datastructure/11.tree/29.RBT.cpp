@@ -165,7 +165,7 @@ RBTNode *erase_maintain(RBTNode *root) {
         root = left_rotate(root);
         root->color = root->lchild->color;  // 等于原来根节点颜色
     } else {
-        if (root->rchild->color == RED) {
+        if (root->lchild->color == RED) {
             root = right_rotate(root);
             root->color = BLACK;
             root->rchild->color = RED;
