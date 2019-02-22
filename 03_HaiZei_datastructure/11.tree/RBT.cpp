@@ -17,6 +17,8 @@ typedef struct RBTNode {
     struct RBTNode *lchild, *rchild;
 } RBTNode;
 RBTNode *NIL;
+
+__attribute__((constructor))
 void init_NIL() {
     NIL = (RBTNode *)malloc(sizeof(RBTNode));
     NIL->key = -1;
@@ -52,12 +54,12 @@ RBTNode *right_rotate(RBTNode *root) {
 RBTNode *insert_maintain(RBTNode *root) {
     if (!has_red_child(root)) return root;
     if (root->lchild->color == RED && root->rchild->color == RED) {
-        /*
+        
         if (!has_red_child(root->lchild) && !has_red_child(root->rchild)) {
             // 如果两个红色孩子下面都没有红色孩子 则不需要调整
             return root;
         }
-        */
+        
     } else if (root->lchild->color == RED && has_red_child(root->lchild)) {
         // 旋转之后戴顶小帽子即可
         if (root->lchild->rchild->color == RED) {
@@ -113,7 +115,8 @@ RBTNode *erase_maintain(RBTNode *root) {
             root = right_rotate(root);
             root->color = BLACK;
             root->rchild->color = RED;
-            return erase_maintain(root->rchild);
+            root->rchild = erase_maintain(root->rchild);
+            return root;
         }
         // 兄弟节点是黑色
         if (!has_red_child(root->lchild)) {                 // ！！！情况一
@@ -123,7 +126,7 @@ RBTNode *erase_maintain(RBTNode *root) {
             return root;
         }
         root->rchild->color = BLACK;                        // ！！！经过下面的调整肯定会消除双重黑,别忽略此句
-        if (root->lchild->lchild != RED) {                  // 判断情况二LR型
+        if (root->lchild->lchild->color != RED) {                  // 判断情况二LR型
             root->lchild = left_rotate(root->lchild);
             root->lchild->color = BLACK;
             root->lchild->lchild->color = RED;
@@ -137,7 +140,8 @@ RBTNode *erase_maintain(RBTNode *root) {
             root = left_rotate(root);
             root->color = BLACK;
             root->lchild->color = RED;
-            return erase_maintain(root->lchild);
+            root->lchild = erase_maintain(root->lchild);
+            return root;
         }
         // 兄弟为黑
         if (!has_red_child(root->rchild)) {
@@ -147,7 +151,7 @@ RBTNode *erase_maintain(RBTNode *root) {
             return root;
         }
         root->lchild->color = BLACK;                        // ！！！一定记得去除双重黑
-        if (root->rchild->rchild != RED) {                  // 判断为情况二的RL型
+        if (root->rchild->rchild->color != RED) {                  // 判断为情况二的RL型 ！！！！
             root->rchild = right_rotate(root->rchild);
             root->rchild->color = BLACK;
             root->rchild->rchild->color = RED;
@@ -204,7 +208,7 @@ void clear(RBTNode *root) {
     return ;
 }
 
-
+/*
 int main() {
     init_NIL();                 // ！！！！别忘记调用
     int op, val;
@@ -224,3 +228,4 @@ int main() {
     }
     return 0;
 }
+*/
