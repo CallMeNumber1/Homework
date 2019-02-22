@@ -71,7 +71,7 @@ RBTNode *insert_maintain(RBTNode *root) {
         // 加不加不影响平衡性
         // 即使任性改了颜色也不会冲突
         // 考试时不能删去，因为失衡了才能改颜色
-        //if (!has_red_child(root->lchild) && !has_red_child(root->rchild)) return root;
+        if (!has_red_child(root->lchild) && !has_red_child(root->rchild)) return root;
         // 最好改的一种情况
     } else if (root->lchild->color == RED && has_red_child(root->lchild)) {
         // LL or LR ?
@@ -140,7 +140,8 @@ RBTNode *erase_maintain(RBTNode *root) {
             root->lchild->color = RED;
             // 变成了兄弟节点为黑色的情况
             // 递归到子节点去处理
-            return erase_maintain(root->lchild);
+            root->lchild = erase_maintain(root->lchild);
+            return root;
         }
         // 到了这一行 代表兄弟节点为黑色
         if (!has_red_child(root->rchild)) {
@@ -169,8 +170,10 @@ RBTNode *erase_maintain(RBTNode *root) {
             root = right_rotate(root);
             root->color = BLACK;
             root->rchild->color = RED;
-            return erase_maintain(root->rchild);
+            root->rchild = erase_maintain(root->rchild);
+            return root;
         }
+
         if (!has_red_child(root->lchild)) {
             root->color += 1;
             root->rchild->color -= 1;
@@ -179,9 +182,9 @@ RBTNode *erase_maintain(RBTNode *root) {
         }
         root->rchild->color = BLACK;
         // 到了这一行，说明兄弟节点有红色孩子
-        if (root->rchild->rchild->color != RED) {
+        if (root->lchild->lchild->color != RED) {
             // 充分 判断RL型
-            root->lchild = left_rotate(root->rchild);
+            root->lchild = left_rotate(root->lchild);
             root->lchild->color = BLACK;
             root->lchild->lchild->color = RED;
         }
@@ -228,6 +231,7 @@ void output(RBTNode *root) {
     output(root->rchild);
     return ;
 }
+/*
 int main() {
     srand(time(0));
     int op, val;
@@ -250,5 +254,5 @@ int main() {
     }
     return 0;
 }
-
+*/
 
