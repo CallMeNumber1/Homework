@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
-#include "./RBT_4th.cpp"
+#include "./exam.cpp"
 namespace lib{
     typedef struct RBNode {
         int key, color; // 0 red, 1 black, 2 double black

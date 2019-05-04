@@ -32,9 +32,11 @@ int KMP(char *str, char *pattern) {
     int *next = (int *)malloc(sizeof(int) * strlen(pattern));
     next[0] = -1;
     // 初始化next数组
+    // 个人理解：相当于模式串的自我匹配过程
     for (int i = 1; pattern[i]; i++) {
         int j = next[i - 1];
-        if (j != -1 && pattern[j + 1] != pattern[i]) j = next[j];
+        // FIXME:此处已做修正，因为当匹配不成功时，要一直向前找，直到j为-1
+        while (j != -1 && pattern[j + 1] != pattern[i]) j = next[j];       
         if (pattern[j + 1] == pattern[i]) next[i] = j + 1;
         else next[i] = -1;    
     }
